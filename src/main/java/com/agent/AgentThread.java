@@ -119,6 +119,7 @@ public class AgentThread implements Runnable, MessageHandler{
 	
 		if(mod != null){
   		    tpmap.put(id, mod);
+		    System.out.println("Adding TP:" + tp);
 		    this.manager.add(mod);
 	    	    try{	    
               	 	this.manager.install();
