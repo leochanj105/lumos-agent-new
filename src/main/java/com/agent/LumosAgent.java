@@ -28,6 +28,7 @@ import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Value;
+import soot.jimple.Jimple;
 import soot.jimple.Stmt;
 import soot.options.Options;
 
@@ -48,11 +49,13 @@ public class LumosAgent {
 
     public static byte[] forTest;
     public static String testclass;
-    // public static String cpath =
-    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    // public static String jarpath =
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent\\io\\opentelemetry\\javaagent\\shaded";
+    public static String jarpath = "C:\\Users\\jchen\\.m2\\repository\\io\\opentelemetry\\opentelemetry-api-trace\\0.13.1\\opentelemetry-api-trace-0.13.1.jar";
     // public static String cpath =
     // "/mnt/c/Users/jchen/Desktop/Academic/lumos/lumos-experiment/ts-launcher/target/classes";
-    public static String cpath = "/app/classes";
+    // public static String cpath = "/app/classes";
     // public clas
     // public static String cpath =
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\test";
@@ -125,10 +128,14 @@ public class LumosAgent {
         // Spring annotations rely on this!!
         Options.v().set_write_local_annotations(true);
 
-        Options.v().set_soot_classpath(path);
+        // Options.v().set_soot_classpath(path);
+        // p(File.pathSeparator);
+        Options.v().set_soot_classpath(jarpath + ";" + path);
         Options.v().set_java_version(8);
+
+        // Options.v().class
         // Options.v().set_process_dir(Collections.singletonList(sourceDirectory));
-        List<String> processList = new ArrayList<String>();
+        // List<String> processList = new ArrayList<String>();
 
         String arr[] = { path };
         Options.v().set_process_dir(Arrays.asList(arr));
@@ -147,11 +154,12 @@ public class LumosAgent {
         // Need this to include all subtypes
         // Options.v().setPhaseOption("cg", "library:any-subtype");
 
-        Scene.v().loadNecessaryClasses();
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
-
+        Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
+                SootClass.SIGNATURES);
+        Scene.v().loadNecessaryClasses();
     }
 
     public static void p(String s) {
@@ -211,6 +219,26 @@ public class LumosAgent {
 
     public static void play() {
         setupSoot(cpath);
+
+        // Options.v().set_soot_classpath((jarpath + ":" +
+        // Options.v().soot_classpath()));
+        // SootClass sc =
+        // Scene.v().loadClassAndSupport("io.opentelemetry.api.trace.Span");
+        // analyzePath(jarpath);
+        // );
+        // SootMethod mm = sc.getMethodByName("current");
+        // p(Scene.v().getSootClassPath());
+        // Jimple.v().newStaticInvokeExpr(null, null)
+        // p(sc.getMethods().toString());
+        // p(sc.getPackageName().toString());
+        // for (SootClass scc : Scene.v().getClasses()) {
+        // if (scc.toString().contains("opentelemetry")) {
+        // p(scc.toString());
+        // p(scc.getMethods().toString());
+        // }
+        // }
+        // if (true)
+        // return;
         analyzePath(cpath);
         String methodName = "sendInsidePayment";
         // String methodName = "foo";
@@ -227,7 +255,8 @@ public class LumosAgent {
         Value local = CompileUtils.findLocal(b, valueName);
         Stmt stmt = CompileUtils.findStmt(b, stmtString);
         List<Stmt> inserts = CompileUtils.generateTPStmts(b, local,
-                Collections.emptyList());
+                Collections.emptyList(), false);
+        p(inserts.toString());
         CompileUtils.insertAt(b, stmt, inserts, false);
         sm.setActiveBody(b);
 
