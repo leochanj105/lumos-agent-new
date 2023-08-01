@@ -77,7 +77,7 @@ public class CompileUtils {
             tpLocal = Jimple.v().newLocal("tpLocal",
                     RefType.v("java.io.PrintStream"));
         } else {
-            tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("io.opentelemetry.api.trace.Span"));
+            tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
         }
         if (getLocal(body, tpLocal) == null) {
             body.getLocals().add(tpLocal);
@@ -89,8 +89,8 @@ public class CompileUtils {
                                 Scene.v().getField("<java.lang.System: java.io.PrintStreamout>").makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             } else {
-                SootMethod currMethod = Scene.v().getSootClass("io.opentelemetry.api.trace.Span")
-                        .getMethod("io.opentelemetry.api.trace.Span current()");
+                SootMethod currMethod = Scene.v().getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
+                        .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
                 units.insertBefore(
                         Jimple.v().newAssignStmt(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
@@ -153,7 +153,8 @@ public class CompileUtils {
         stmt = Jimple.v().newAssignStmt(tmpString1, Jimple.v().newVirtualInvokeExpr(tmpString1,
                 concatMethod.makeRef(), tmpString2));
         stlist.add(stmt);
-
+	//if(true)
+	//	return stlist;
         if (isPrint) {
             SootMethod toCall = Scene.v().getSootClass("java.io.PrintStream")
                     .getMethod("void println(java.lang.String)");
@@ -162,10 +163,10 @@ public class CompileUtils {
                             tmpString1));
             stlist.add(printStmt);
         } else {
-            SootMethod toCall = Scene.v().getSootClass("io.opentelemetry.api.trace.Span")
-                    .getMethod("io.opentelemetry.api.trace.Span addEvent(java.lang.String)");
+            SootMethod toCall = Scene.v().getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
+                    .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span addEvent(java.lang.String)");
             InvokeStmt eventStmt = Jimple.v()
-                    .newInvokeStmt(Jimple.v().newVirtualInvokeExpr(tpLocal, toCall.makeRef(), tmpString1));
+                    .newInvokeStmt(Jimple.v().newInterfaceInvokeExpr(tpLocal, toCall.makeRef(), tmpString1));
             stlist.add(eventStmt);
         }
 

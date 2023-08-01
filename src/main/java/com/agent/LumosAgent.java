@@ -49,10 +49,10 @@ public class LumosAgent {
 
     public static byte[] forTest;
     public static String testclass;
-    public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    public static String cpath = "/app/classes";
     // public static String jarpath =
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent\\io\\opentelemetry\\javaagent\\shaded";
-    public static String jarpath = "C:\\Users\\jchen\\.m2\\repository\\io\\opentelemetry\\opentelemetry-api-trace\\0.13.1\\opentelemetry-api-trace-0.13.1.jar";
+    public static String jarpath = "/app/opentelemetry-javaagent.jar";
     // public static String cpath =
     // "/mnt/c/Users/jchen/Desktop/Academic/lumos/lumos-experiment/ts-launcher/target/classes";
     // public static String cpath = "/app/classes";
@@ -76,13 +76,13 @@ public class LumosAgent {
                     byte[] classFileBuffer) {
                 // return transformed class file.
 
-                if (LumosAgent.cloader == null && loader != null)
-                // && loader.getClass().getName().contains("LaunchedURLClassLoader"))
+                if (LumosAgent.cloader == null && loader != null
+                 && loader.getClass().getName().contains("LaunchedURLClassLoader"))
                 {
                     System.out.println("Hooked " + loader);
                     LumosAgent.cloader = loader;
                 }
-                p(className);
+                //p(className);
                 // if(className.contains("ServiceImpl")){
                 // System.out.println("[VVVV] " + loader + ": " + new LoaderClassPath(loader));
                 // ClassPool pool = new ClassPool(true);
@@ -130,7 +130,7 @@ public class LumosAgent {
 
         // Options.v().set_soot_classpath(path);
         // p(File.pathSeparator);
-        Options.v().set_soot_classpath(jarpath + ";" + path);
+        Options.v().set_soot_classpath(jarpath + ":" + path);
         Options.v().set_java_version(8);
 
         // Options.v().class
@@ -157,7 +157,7 @@ public class LumosAgent {
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
-        Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
+        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                 SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
     }

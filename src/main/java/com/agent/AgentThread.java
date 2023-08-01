@@ -185,7 +185,7 @@ public class AgentThread implements Runnable, MessageHandler {
         // Wait Until we hooked the Spring classloader
         while (LumosAgent.cloader == null)
             ;
-        int seconds = 30;
+        int seconds = 10;
         for (int i = 0; i < seconds; i++) {
             try {
                 Thread.sleep(1000);
