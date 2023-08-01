@@ -185,9 +185,29 @@ public class AgentThread implements Runnable, MessageHandler {
         // Wait Until we hooked the Spring classloader
         while (LumosAgent.cloader == null)
             ;
-
+        int seconds = 30;
+        for (int i = 0; i < seconds; i++) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            System.out.println("[LUMOS] Count " + (seconds - i));
+        }
+        System.out.println("[LUMOS] Instrumenting...");
+        Map<String, byte[]> cmap = new HashMap<>();
+        cmap.put(LumosAgent.testclass, LumosAgent.forTest);
+        LumosAgent.p(LumosAgent.forTest.length + "");
+        try {
+            this.agent.reload(cmap);
+        } catch (UnmodifiableClassException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        LumosAgent.p("Instrumented");
+        // LumosAgent.cloade
         // Connect to websocket controller server
-        connect("ws://lumos:8765");
+        // connect("ws://lumos:8765");
 
         /*
          * // A test of adding a tracepoint, then remove it...

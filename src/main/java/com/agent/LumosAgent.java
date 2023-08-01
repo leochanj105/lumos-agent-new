@@ -46,7 +46,16 @@ public class LumosAgent {
     public static Map<String, SootClass> classMap = new HashMap<>();
     public static Map<String, Body> bodyMap = new HashMap<>();
 
-    public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    public static byte[] forTest;
+    public static String testclass;
+    // public static String cpath =
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    // public static String cpath =
+    // "/mnt/c/Users/jchen/Desktop/Academic/lumos/lumos-experiment/ts-launcher/target/classes";
+    public static String cpath = "/app/classes";
+    // public clas
+    // public static String cpath =
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\test";
 
     public static void premain(String agentArgs, Instrumentation inst) {
 
@@ -64,12 +73,13 @@ public class LumosAgent {
                     byte[] classFileBuffer) {
                 // return transformed class file.
 
-                if (LumosAgent.cloader == null && loader != null
-                        && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                if (LumosAgent.cloader == null && loader != null)
+                // && loader.getClass().getName().contains("LaunchedURLClassLoader"))
+                {
                     System.out.println("Hooked " + loader);
                     LumosAgent.cloader = loader;
                 }
-
+                p(className);
                 // if(className.contains("ServiceImpl")){
                 // System.out.println("[VVVV] " + loader + ": " + new LoaderClassPath(loader));
                 // ClassPool pool = new ClassPool(true);
@@ -86,6 +96,7 @@ public class LumosAgent {
                 return classFileBuffer;
             }
         });
+        play();
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
     }
@@ -165,6 +176,7 @@ public class LumosAgent {
                 bodyMap.put(sm.getSignature(), ((Body) sm.getActiveBody().clone()));
             }
             classMap.put(cls.toString(), cls);
+            // CompileUtils.outputJimple(cls, "AAA");
         }
         p("----------");
 
@@ -197,43 +209,54 @@ public class LumosAgent {
         return null;
     }
 
-    public static void main(String args[]) {
+    public static void play() {
         setupSoot(cpath);
         analyzePath(cpath);
         String methodName = "sendInsidePayment";
+        // String methodName = "foo";
         String valueName = "$stack29";
+        // String valueName = "l1";
         String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
+        // String stmtString = "l1 = l0 + 1";
 
         Body b = findBody(methodName);
         SootMethod sm = finMethod(methodName);
         SootClass sclass = findClass(sm.getDeclaringClass().getName());
+        testclass = sclass.toString();
 
-        Value stack29 = CompileUtils.findLocal(b, valueName);
+        Value local = CompileUtils.findLocal(b, valueName);
         Stmt stmt = CompileUtils.findStmt(b, stmtString);
-        List<Stmt> inserts = CompileUtils.generateTPStmts(b, stack29, Collections.emptyList());
+        List<Stmt> inserts = CompileUtils.generateTPStmts(b, local,
+                Collections.emptyList());
         CompileUtils.insertAt(b, stmt, inserts, false);
         sm.setActiveBody(b);
-        // CompileUtils.outputJimple(sclass, "AAA");
-        byte[] bytecode = CompileUtils.compileClass(sclass);
-        p(bytecode.toString());
 
-        String dirname = "AAA";
-        File outputDir = new File(dirname);
-        if (!outputDir.exists()) {
-            outputDir.mkdir();
-        }
-        File file2 = new File(dirname + "/" + sclass.getName() + ".class");
-        FileOutputStream classout;
-        try {
-            classout = new FileOutputStream(file2);
-            classout.write(bytecode);
-            classout.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        byte[] bytecode = CompileUtils.compileClass(sclass);
+        forTest = bytecode;
+
+        // String dirname = "AAA";
+        // File outputDir = new File(dirname);
+        // if (!outputDir.exists()) {
+        // outputDir.mkdir();
+        // }
+        // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
+        // FileOutputStream classout;
+        // try {
+        // classout = new FileOutputStream(file2);
+        // classout.write(bytecode);
+        // classout.close();
+        // } catch (FileNotFoundException e) {
+        // e.printStackTrace();
+        // } catch (IOException e) {
+        // // TODO Auto-generated catch block
+        // e.printStackTrace();
+        // }
+    }
+
+    public static void main(String args[]) {
+        play();
+        // p(bytecode.toString());
+        // p(sclass.toString());
 
     }
 }
