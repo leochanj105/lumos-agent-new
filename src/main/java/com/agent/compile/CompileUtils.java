@@ -155,7 +155,8 @@ public class CompileUtils {
         stmt = Jimple.v().newAssignStmt(tmpString1, Jimple.v().newVirtualInvokeExpr(tmpString1,
                 concatMethod.makeRef(), tmpString2));
         stlist.add(stmt);
-
+        // if(true)
+        // return stlist;
         if (isPrint) {
             SootMethod toCall = Scene.v().getSootClass("java.io.PrintStream")
                     .getMethod("void println(java.lang.String)");
