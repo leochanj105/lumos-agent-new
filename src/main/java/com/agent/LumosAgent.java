@@ -50,9 +50,9 @@ public class LumosAgent {
     public static byte[] forTest;
     public static String testclass;
     public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
     // public static String jarpath =
-    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent\\io\\opentelemetry\\javaagent\\shaded";
-    public static String jarpath = "C:\\Users\\jchen\\.m2\\repository\\io\\opentelemetry\\opentelemetry-api-trace\\0.13.1\\opentelemetry-api-trace-0.13.1.jar";
+    // "C:\\Users\\jchen\\.m2\\repository\\io\\opentelemetry\\opentelemetry-api-trace\\0.13.1\\opentelemetry-api-trace-0.13.1.jar";
     // public static String cpath =
     // "/mnt/c/Users/jchen/Desktop/Academic/lumos/lumos-experiment/ts-launcher/target/classes";
     // public static String cpath = "/app/classes";
@@ -130,7 +130,7 @@ public class LumosAgent {
 
         // Options.v().set_soot_classpath(path);
         // p(File.pathSeparator);
-        Options.v().set_soot_classpath(jarpath + ";" + path);
+        Options.v().set_soot_classpath(jarpath + File.pathSeparator + path);
         Options.v().set_java_version(8);
 
         // Options.v().class
@@ -157,8 +157,10 @@ public class LumosAgent {
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
-        Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
+        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                 SootClass.SIGNATURES);
+        // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
+        // SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
     }
 
@@ -231,12 +233,12 @@ public class LumosAgent {
         // Jimple.v().newStaticInvokeExpr(null, null)
         // p(sc.getMethods().toString());
         // p(sc.getPackageName().toString());
-        // for (SootClass scc : Scene.v().getClasses()) {
-        // if (scc.toString().contains("opentelemetry")) {
-        // p(scc.toString());
-        // p(scc.getMethods().toString());
-        // }
-        // }
+        for (SootClass scc : Scene.v().getClasses()) {
+            if (scc.toString().contains("opentelemetry")) {
+                p(scc.toString());
+                p(scc.getMethods().toString());
+            }
+        }
         // if (true)
         // return;
         analyzePath(cpath);
