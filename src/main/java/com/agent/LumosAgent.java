@@ -96,7 +96,9 @@ public class LumosAgent {
                 return classFileBuffer;
             }
         });
-        play();
+        // play();
+        setupSoot(cpath);
+        analyzePath(cpath);
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
     }
@@ -234,26 +236,6 @@ public class LumosAgent {
 
     public static void play() {
         setupSoot(cpath);
-
-        // Options.v().set_soot_classpath((jarpath + ":" +
-        // Options.v().soot_classpath()));
-        // SootClass sc =
-        // Scene.v().loadClassAndSupport("io.opentelemetry.api.trace.Span");
-        // analyzePath(jarpath);
-        // );
-        // SootMethod mm = sc.getMethodByName("current");
-        // p(Scene.v().getSootClassPath());
-        // Jimple.v().newStaticInvokeExpr(null, null)
-        // p(sc.getMethods().toString());
-        // p(sc.getPackageName().toString());
-        // for (SootClass scc : Scene.v().getClasses()) {
-        // if (scc.toString().contains("opentelemetry")) {
-        // p(scc.toString());
-        // p(scc.getMethods().toString());
-        // }
-        // }
-        // if (true)
-        // return;
         analyzePath(cpath);
 
         String methodName = "sendInsidePayment";

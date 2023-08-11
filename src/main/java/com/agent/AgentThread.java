@@ -9,6 +9,9 @@ import javassist.CtConstructor;
 import javassist.NotFoundException;
 import java.lang.instrument.UnmodifiableClassException;
 import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
+import tracing.TracePoint;
 
 import java.lang.reflect.Field;
 import java.lang.ClassLoader;
@@ -70,8 +73,8 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void handleJSON(String jstr) {
-        // jstr = "{type:add, tps : [{id:\"1\", cname:a, method:b, tptype:code, line:1,
-        // code:xxx}, {id:\"2\", cname:a, method:b, tptype:span}]}";
+        // System.out.println("");
+        System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
 
         JSONObject obj = new JSONObject(jstr);
         String x = obj.getString("type");
@@ -80,55 +83,27 @@ public class AgentThread implements Runnable, MessageHandler {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
                 String id = tp.getString("id");
-                String cname = tp.getString("cname");
-                String method = tp.getString("method");
                 String tptype = tp.getString("tptype");
-                DynamicModification mod = null;
+                String method = tp.getString("method");
+                
                 if (tptype.equals("code")) {
-                    String code = tp.getString("code");
+                    String stmt = tp.getString("stmt");
                     int line = tp.getInt("line");
-                    mod = new InstructionModification(cname, method, code, line);
-                } else if (tptype.equals("span")) {
-                    mod = new AnnotationModification(cname, method, WITHSPAN);
-                } else if (tptype.equals("timing")) {
-                    int line1 = tp.getInt("line1");
-                    int line2 = tp.getInt("line2");
-                    mod = new TimingModification(cname, method, id, line1, line2);
-                }
-                /*
-                 * else if(tptype.equals("var")){
-                 * String type = tp.getString("type");
-                 * String vname = tp.getString("vname");
-                 * CtClass ctype = null;
-                 * if(type.equals("boolean")){
-                 * ctype = CtClass.booleanType;
-                 * }
-                 * else if(type.equals("int")){
-                 * ctype = CtClass.intType;
-                 * }
-                 * else if(type.equals("long")){
-                 * ctype = CtClass.longType;
-                 * }
-                 * else if(type.equals("float")){
-                 * ctype = CtClass.floatType;
-                 * }
-                 * else if(type.equals("double")){
-                 * ctype = CtClass.doubleType;
-                 * }
-                 * mod = new LocalVarModification(cname, method, vname, ctype);
-                 * }
-                 */
-
-                if (mod != null) {
-                    tpmap.put(id, mod);
-                    System.out.println("Adding TP:" + tp);
-                    this.manager.add(mod);
-                    try {
-                        this.manager.install();
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    String value = tp.getString("value");
+                    List<String> suffix = new ArrayList<>();
+                    JSONArray suffixarray = tp.getJSONArray("suffix");
+                    for (int j = 0; j < suffixarray.length(); j++) {
+                        suffix.add(suffixarray.getJSONObject(i).toString());
                     }
-                }
+                    TracePoint actualtp = new TracePoint(id, method, stmt, line, value, suffix);
+                    // System.out.println()
+                    System.out.println("??????????\n" + actualtp.getSuffix());    
+                } 
+                // else if (tptype.equals("span")) {
+                // } else if (tptype.equals("timing")) {
+                //     int line1 = tp.getInt("line1");
+                //     int line2 = tp.getInt("line2");
+                // }
             }
 
         } else if (x.equals("remove")) {
@@ -137,20 +112,34 @@ public class AgentThread implements Runnable, MessageHandler {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
                 String id = tp.getString("id");
-                DynamicModification mod = tpmap.get(id);
-                if (mod != null) {
-                    tpmap.remove(id);
-                    this.manager.remove(mod);
-                    try {
-                        this.manager.install();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+                // DynamicModification mod = tpmap.get(id);
+                // if (mod != null) {
+                    // tpmap.remove(id);
+                    // this.manager.remove(mod);
+                    // try {
+                    //     this.manager.install();
+                    // } catch (Exception e) {
+                    //     e.printStackTrace();
+                    // }
+                // }
             }
         } else {
             System.out.println("Not implemented!");
         }
+    }
+
+    public void refreshTPs(){
+        System.out.println("[LUMOS] Instrumenting...");
+        Map<String, byte[]> cmap= LumosAgent.instrument();
+        // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
+        // LumosAgent.p(LumosAgent.forTest.length + "");
+        try {
+            this.agent.reload(cmap);
+        } catch (UnmodifiableClassException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        LumosAgent.p("Instrumented");
     }
 
     public void handleMessage(String message) {
@@ -186,29 +175,19 @@ public class AgentThread implements Runnable, MessageHandler {
         while (LumosAgent.cloader == null || !LumosAgent.analyzeReady)
             ;
         
-        int seconds = 10;
-        for (int i = 0; i < seconds; i++) {
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            System.out.println("[LUMOS] Count " + (seconds - i));
-        }
-        System.out.println("[LUMOS] Instrumenting...");
-        Map<String, byte[]> cmap = new HashMap<>();
-        cmap.put(LumosAgent.testclass, LumosAgent.forTest);
-        LumosAgent.p(LumosAgent.forTest.length + "");
-        try {
-            this.agent.reload(cmap);
-        } catch (UnmodifiableClassException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        LumosAgent.p("Instrumented");
-        // LumosAgent.cloade
-        // Connect to websocket controller server
-        // connect("ws://lumos:8765");
+        // int seconds = 10;
+        // for (int i = 0; i < seconds; i++) {
+        //     try {
+        //         Thread.sleep(1000);
+        //     } catch (Exception e) {
+        //         e.printStackTrace();
+        //     }
+        //     System.out.println("[LUMOS] Count " + (seconds - i));
+        // }
+        
+
+        //Connect to websocket controller server
+        connect("ws://lumos:8765");
 
         /*
          * // A test of adding a tracepoint, then remove it...
