@@ -7,23 +7,21 @@ public class TracePoint {
     public String sm;
     public String stmt;
     public String val;
+    public int line;
     public List<String> suffix;
     public String uid;
 
-    public TracePoint(String sm, String stmt, String val, List<String> suffix, String uid) {
+    public TracePoint(String uid, String sm, String stmt, int line, String val, List<String> suffix) {
+        this.uid = uid;
         this.sm = sm;
         this.stmt = stmt;
+        this.line = line;
         this.val = val;
         this.suffix = suffix;
-        this.uid = uid;
     }
 
-    public TracePoint(String sm, String stmt, String val, String uid) {
-        this.sm = sm;
-        this.stmt = stmt;
-        this.val = val;
-        this.suffix = Collections.emptyList();
-        this.uid = uid;
+    public TracePoint(String uid, String sm, String stmt, int line, String val) {
+        this(uid,sm,stmt,line,val, Collections.emptyList());
     }
 
     @Override
@@ -33,6 +31,7 @@ public class TracePoint {
         result = prime * result + ((sm == null) ? 0 : sm.hashCode());
         result = prime * result + ((stmt == null) ? 0 : stmt.hashCode());
         result = prime * result + ((val == null) ? 0 : val.hashCode());
+        result = prime * result + line;
         result = prime * result + ((suffix == null) ? 0 : suffix.hashCode());
         result = prime * result + ((uid == null) ? 0 : uid.hashCode());
         return result;
@@ -61,6 +60,8 @@ public class TracePoint {
             if (other.val != null)
                 return false;
         } else if (!val.equals(other.val))
+            return false;
+        if (line != other.line)
             return false;
         if (suffix == null) {
             if (other.suffix != null)
@@ -97,6 +98,14 @@ public class TracePoint {
 
     public void setVal(String val) {
         this.val = val;
+    }
+
+    public int getLine() {
+        return line;
+    }
+
+    public void setLine(int line) {
+        this.line = line;
     }
 
     public List<String> getSuffix() {

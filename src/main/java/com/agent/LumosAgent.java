@@ -260,7 +260,7 @@ public class LumosAgent {
         String valueName = "$stack29";
         String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
 
-        TracePoint tp = new TracePoint(methodName, stmtString, valueName, "11");
+        TracePoint tp = new TracePoint("11", methodName, stmtString,103, valueName);
         addTP(tp);
         instrument();
     }
@@ -279,7 +279,7 @@ public class LumosAgent {
             // This two-step way is needed to avoid inserted stmts
             // from breaking the labeling
             for (TracePoint tp : methodTPMap.get(smstr)) {
-                Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), -1);
+                Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), tp.getLine());
                 targetstmts.add(stmt);
                 targetTPs.add(tp);
             }
