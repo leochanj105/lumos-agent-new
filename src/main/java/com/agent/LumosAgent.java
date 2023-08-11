@@ -54,6 +54,7 @@ public class LumosAgent {
     // this.loader = loader;
     // }
     public static ClassLoader cloader = null;
+    public static boolean analyzeReady = false;
     public static Map<String, SootMethod> methodMap = new HashMap<>();
     public static Map<String, SootClass> classMap = new HashMap<>();
     public static Map<String, Body> bodyMap = new HashMap<>();
@@ -63,11 +64,11 @@ public class LumosAgent {
 
     public static byte[] forTest;
     public static String testclass;
-    // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
-    // public static String cpath = "/app/classes";
-    public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
+    public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
+    public static String cpath = "/app/classes";
+    // public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
-    public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    // public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
 
     public static void premain(String agentArgs, Instrumentation inst) {
 
@@ -86,7 +87,7 @@ public class LumosAgent {
                 // return transformed class file.
 
                 if (LumosAgent.cloader == null && loader != null
-                // && loader.getClass().getName().contains("LaunchedURLClassLoader")
+                    && loader.getClass().getName().contains("LaunchedURLClassLoader")
                 ) {
                     System.out.println("Hooked " + loader);
                     LumosAgent.cloader = loader;
@@ -200,8 +201,8 @@ public class LumosAgent {
             classMap.put(cls.toString(), cls);
             // CompileUtils.outputJimple(cls, "AAA");
         }
-        p("----------");
-
+        // p("----------");
+        analyzeReady = true;
     }
 
     public static Body findBody(String name) {

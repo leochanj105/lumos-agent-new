@@ -183,8 +183,9 @@ public class AgentThread implements Runnable, MessageHandler {
     @Override
     public void run() {
         // Wait Until we hooked the Spring classloader
-        while (LumosAgent.cloader == null)
+        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady)
             ;
+        
         int seconds = 10;
         for (int i = 0; i < seconds; i++) {
             try {

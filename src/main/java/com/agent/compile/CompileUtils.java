@@ -139,7 +139,7 @@ public class CompileUtils {
                 SootClass sc = LumosAgent.classMap.get(curr.getType().toString());
                 if (ref.isEmpty())
                     continue;
-                String actual = ref.strip();
+                String actual = ref.trim();
                 SootField sf = null;
                 for (SootField f : sc.getFields()) {
                     if (f.getName().contains(actual)) {
