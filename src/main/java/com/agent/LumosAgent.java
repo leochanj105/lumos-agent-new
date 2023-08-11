@@ -259,7 +259,7 @@ public class LumosAgent {
         String valueName = "$stack29";
         String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
 
-        TracePoint tp = new TracePoint(methodName, stmtString, valueName);
+        TracePoint tp = new TracePoint(methodName, stmtString, valueName, "11");
         addTP(tp);
         instrument();
     }

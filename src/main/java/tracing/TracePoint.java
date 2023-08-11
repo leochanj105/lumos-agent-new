@@ -8,16 +8,22 @@ public class TracePoint {
     public String stmt;
     public String val;
     public List<String> suffix;
+    public String uid;
 
-    public TracePoint(String sm, String stmt, String val, List<String> suffix) {
+    public TracePoint(String sm, String stmt, String val, List<String> suffix, String uid) {
         this.sm = sm;
         this.stmt = stmt;
         this.val = val;
         this.suffix = suffix;
+        this.uid = uid;
     }
 
-    public TracePoint(String sm, String stmt, String val) {
-        this(sm, stmt, val, Collections.emptyList());
+    public TracePoint(String sm, String stmt, String val, String uid) {
+        this.sm = sm;
+        this.stmt = stmt;
+        this.val = val;
+        this.suffix = Collections.emptyList();
+        this.uid = uid;
     }
 
     @Override
@@ -28,6 +34,7 @@ public class TracePoint {
         result = prime * result + ((stmt == null) ? 0 : stmt.hashCode());
         result = prime * result + ((val == null) ? 0 : val.hashCode());
         result = prime * result + ((suffix == null) ? 0 : suffix.hashCode());
+        result = prime * result + ((uid == null) ? 0 : uid.hashCode());
         return result;
     }
 
@@ -59,6 +66,11 @@ public class TracePoint {
             if (other.suffix != null)
                 return false;
         } else if (!suffix.equals(other.suffix))
+            return false;
+        if (uid == null) {
+            if (other.uid != null)
+                return false;
+        } else if (!uid.equals(other.uid))
             return false;
         return true;
     }
@@ -93,6 +105,14 @@ public class TracePoint {
 
     public void setSuffix(List<String> suffix) {
         this.suffix = suffix;
+    }
+
+    public String getUid() {
+        return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
 }
