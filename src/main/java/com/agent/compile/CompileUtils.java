@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.agent.LumosAgent;
+
 // import com.lumos.App;
 // import com.lumos.forward.ContextSensitiveValue;
 // import com.lumos.forward.UniqueName;
@@ -29,11 +31,12 @@ import soot.Printer;
 import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
+import soot.SootField;
 import soot.SootFieldRef;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
-
+import soot.ValueBox;
 import soot.baf.BafASMBackend;
 import soot.jimple.AssignStmt;
 import soot.jimple.Constant;
@@ -43,16 +46,15 @@ import soot.jimple.JimpleBody;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
 import soot.jimple.internal.JAssignStmt;
+import soot.jimple.internal.JInstanceFieldRef;
 import soot.options.Options;
 
 public class CompileUtils {
 
-    public static Map<String, Body> bodyMap = new HashMap<>();
-
+    // public static Map<String, Body> bodyMap = new HashMap<>();
     public static int id = 0;
 
-    public static void insertAt(Body body, Stmt target, Stmt toinsert, boolean before) {
-        PatchingChain<Unit> units = body.getUnits();
+    public static void insertAt(PatchingChain<Unit> units, Stmt target, Stmt toinsert, boolean before) {
         if (before) {
             units.insertBefore(toinsert, target);
         } else {
@@ -61,8 +63,7 @@ public class CompileUtils {
         // body.validate();
     }
 
-    public static void insertAt(Body body, Stmt target, List<Stmt> toinsert, boolean before) {
-        PatchingChain<Unit> units = body.getUnits();
+    public static void insertAt(PatchingChain<Unit> units, Stmt target, List<Stmt> toinsert, boolean before) {
         if (before) {
             units.insertBefore(toinsert, target);
         } else {
@@ -71,25 +72,22 @@ public class CompileUtils {
         // body.validate();
     }
 
-    public static List<Stmt> generateTPStmts(Body body, Value base, List<SootFieldRef> refs, boolean isPrint) {
-        Local tpLocal = null;
-        if (isPrint) {
-            tpLocal = Jimple.v().newLocal("tpLocal",
-                    RefType.v("java.io.PrintStream"));
-        } else {
-            tpLocal = Jimple.v().newLocal("tpLocal",
-                    RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
-        }
-        if (getLocal(body, tpLocal) == null) {
-            body.getLocals().add(tpLocal);
-
-            PatchingChain<Unit> units = body.getUnits();
+    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint) {
+        Local tpLocal = getLocal(body, "tpLocal");
+        PatchingChain<Unit> units = body.getUnits();
+        if (tpLocal == null) {
+            // tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("java.io.PrintStream"));
             if (isPrint) {
+                tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("java.io.PrintStream"));
+                body.getLocals().add(tpLocal);
                 units.insertBefore(Jimple.v().newAssignStmt(
                         tpLocal, Jimple.v().newStaticFieldRef(
                                 Scene.v().getField("<java.lang.System: java.io.PrintStreamout>").makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             } else {
+                tpLocal = Jimple.v().newLocal("tpLocal",
+                        RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
+                body.getLocals().add(tpLocal);
                 SootMethod currMethod = Scene.v()
                         .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
                         .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
@@ -97,51 +95,103 @@ public class CompileUtils {
                         Jimple.v().newAssignStmt(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             }
-            // body.validate();
-            // java.lang.System.
         }
 
-        Local tmpString1 = Jimple.v().newLocal("tmpString1", RefType.v("java.lang.String"));
-        if (getLocal(body, tmpString1) == null) {
+        Local tmpString1 = getLocal(body, "tmpString1");
+        if (tmpString1 == null) {
+            tmpString1 = Jimple.v().newLocal("tmpString1", RefType.v("java.lang.String"));
             body.getLocals().add(tmpString1);
             // body.validate();
         }
-        Local tmpString2 = Jimple.v().newLocal("tmpString2", RefType.v("java.lang.String"));
-        if (getLocal(body, tmpString2) == null) {
+        Local tmpString2 = getLocal(body, "tmpString2");
+        if (tmpString2 == null) {
+            tmpString2 = Jimple.v().newLocal("tmpString2", RefType.v("java.lang.String"));
             body.getLocals().add(tmpString2);
             // body.validate();
         }
         List<Stmt> stlist = new ArrayList<>();
 
         Value val = null;
-        // Value baseval = un.getBase().getValue();
-        if (refs.isEmpty()) {
-            // App.p(baseval.getClass());
-            if (base instanceof Constant) {
-                val = base;
+        Value baseval = v;
+        if (suffix.isEmpty()) {
+            if (baseval instanceof Constant) {
+                val = baseval;
+            } else if (baseval instanceof JInstanceFieldRef) {
+                JInstanceFieldRef bref = (JInstanceFieldRef) baseval;
+                Local tmp = Jimple.v().newLocal("tpfield" + (id++), RefType.v(bref.getField().getType().toString()));
+                body.getLocals().add(tmp);
+                // locallist.add(tmp);
+                Stmt st = Jimple.v().newAssignStmt(tmp, bref);
+                stlist.add(st);
+                // App.p(st);
+                // curr = tmp;
+                val = tmp;
             } else {
                 // App.p(baseval instanceof Constant);
-                val = getLocal(body, base);
+                val = getLocal(body, baseval);
             }
         } else {
-            Value curr = getLocal(body, base);
+            // App.p(baseval);
+            Value curr = getLocal(body, baseval);
             List<Local> locallist = new ArrayList<>();
-            for (SootFieldRef ref : refs) {
-                Local tmp = Jimple.v().newLocal("tmpLocal" + (id++), ref.declaringClass().getType());
-                body.getLocals().add(tmp);
-                body.validate();
-                locallist.add(tmp);
 
-                AssignStmt stmt = Jimple.v().newAssignStmt(tmp, Jimple.v().newInstanceFieldRef(curr, ref));
-                stlist.add(stmt);
+            for (String ref : suffix) {
+                SootClass sc = LumosAgent.classMap.get(curr.getType().toString());
+                if (ref.isEmpty())
+                    continue;
+                String actual = ref.strip();
+                SootField sf = null;
+                for (SootField f : sc.getFields()) {
+                    if (f.getName().contains(actual)) {
+                        sf = f;
+                        break;
+                    }
+                }
+                SootMethod getter = null;
+                if (sf.isPrivate() && !curr.toString().equals("this")) {
+                    for (SootMethod method : sc.getMethods()) {
+                        String fname = sf.getName();
+                        String prefix = sf.getType().toString().equals("boolean") ? "is" : "get";
+                        String cand = prefix + fname.substring(0, 1).toUpperCase() + fname.substring(1);
+                        if (method.getName().equals(cand)) {
+                            getter = method;
+                            break;
+                        }
+                    }
+                    // App.p(getter);
+                }
+
+                Local actualBase = null;
+
+                if (!(curr instanceof Local)) {
+                    Local tmp = Jimple.v().newLocal("tpfield" + (id++), curr.getType());
+                    body.getLocals().add(tmp);
+                    Stmt st = Jimple.v().newAssignStmt(tmp, curr);
+                    stlist.add(st);
+
+                    actualBase = tmp;
+                } else {
+                    actualBase = (Local) curr;
+                }
+                // BooleanType
+                // sf.getTy
+                Local tmp = Jimple.v().newLocal("tpfield" + (id++), sf.getType());
+                body.getLocals().add(tmp);
+                if (sf.isPrivate() && !curr.toString().equals("this")) {
+                    Stmt st = Jimple.v().newAssignStmt(tmp,
+                            Jimple.v().newVirtualInvokeExpr(actualBase, getter.makeRef()));
+                    stlist.add(st);
+                } else {
+                    Stmt st = Jimple.v().newAssignStmt(tmp, Jimple.v().newInstanceFieldRef(actualBase, sf.makeRef()));
+                    stlist.add(st);
+                }
                 curr = tmp;
             }
             val = curr;
             // for(int i = 0; i < un.getSuffix())
-
         }
 
-        AssignStmt stmt = Jimple.v().newAssignStmt(tmpString1, StringConstant.v(val.toString() + "="));
+        AssignStmt stmt = Jimple.v().newAssignStmt(tmpString1, StringConstant.v(combine(v, suffix) + "="));
         stlist.add(stmt);
         // Value actualVal = null;
         // if(cv.g)
@@ -155,8 +205,7 @@ public class CompileUtils {
         stmt = Jimple.v().newAssignStmt(tmpString1, Jimple.v().newVirtualInvokeExpr(tmpString1,
                 concatMethod.makeRef(), tmpString2));
         stlist.add(stmt);
-        // if(true)
-        // return stlist;
+
         if (isPrint) {
             SootMethod toCall = Scene.v().getSootClass("java.io.PrintStream")
                     .getMethod("void println(java.lang.String)");
@@ -173,27 +222,59 @@ public class CompileUtils {
                     .newInvokeStmt(Jimple.v().newInterfaceInvokeExpr(tpLocal, toCall.makeRef(), tmpString1));
             stlist.add(eventStmt);
         }
-
         return stlist;
     }
 
-    public static Local findLocal(Body b, String name) {
+    public static Local getLocal(Body b, String vname) {
         for (Local l : b.getLocals()) {
-            if (l.toString().equals(name)) {
+            if (l.getName().equals(vname)) {
                 return l;
             }
         }
         return null;
     }
 
-    public static Stmt findStmt(Body b, String str) {
-        for (Unit u : b.getUnits()) {
-            Stmt stmt = (Stmt) u;
-            if (stmt.toString().equals(str)) {
+    public static Value findLocal(Stmt stmt, String local) {
+        for (ValueBox vb : stmt.getUseAndDefBoxes()) {
+            Value v = vb.getValue();
+            if (v.toString().equals(local)) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    // public static Stmt findStmt(Body b, String str) {
+    // for (Unit u : b.getUnits()) {
+    // Stmt stmt = (Stmt) u;
+    // if (stmt.toString().equals(str)) {
+    // return stmt;
+    // }
+    // }
+    // return null;
+    // }
+
+    public static Stmt searchStmt(Body b, String stmtStr, int linenum) {
+
+        for (Unit unit : b.getUnits()) {
+            Stmt stmt = (Stmt) unit;
+            boolean stmtMatched = stmt.toString().equals(stmtStr);
+            boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
+            // }
+            if (stmtMatched && lineMatch) {
                 return stmt;
             }
         }
         return null;
+    }
+
+    public static String combine(Value base, List<String> suf) {
+        String res = base.toString();
+        for (String str : suf) {
+            res += "." + str;
+        }
+        return res;
+
     }
 
     public static Local getLocal(Body b, Value v) {
@@ -255,30 +336,14 @@ public class CompileUtils {
             writerfile = new PrintWriter(file);
             ByteArrayOutputStream bstream = new ByteArrayOutputStream(8192);
             writer = new PrintWriter(bstream, true);
-
-            // JimplePrinter printer = new JimplePrinter();
             Printer.v().printTo(cl, writerfile);
-            // printer.printTo(cl, writer);
-
-            // printer.printTo(cl, writerfile);
             writerfile.close();
 
-            // System.out.println(bstream.toString());
-
-            // ByteArrayInputStream binput = new
-            // ByteArrayInputStream(bstream.toByteArray());
-            // FileInputStream finput = new FileInputStream(file);
-
             BafASMBackend backend = new BafASMBackend(cl, 52);
-            // PackManager.v().createASMBackend(cl);
             File file2 = new File(outputDir + File.separator + cl.getName() + ".class");
-            // writerfile = new PrintWriter(file2);
             FileOutputStream classout = new FileOutputStream(file2);
             backend.generateClassFile(classout);
             classout.close();
-            // System.out.println(sclass.getMethods());
-            // finput.close();
-
         } catch (Exception e) {
             e.printStackTrace();
         }

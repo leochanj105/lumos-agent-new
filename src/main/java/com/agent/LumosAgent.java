@@ -15,8 +15,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.agent.compile.CompileUtils;
 
@@ -24,13 +28,20 @@ import java.net.URLClassLoader;
 
 import soot.Body;
 import soot.G;
+import soot.PatchingChain;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.Unit;
 import soot.Value;
 import soot.jimple.Jimple;
 import soot.jimple.Stmt;
+import soot.jimple.internal.JGotoStmt;
+import soot.jimple.internal.JIfStmt;
+import soot.jimple.internal.JReturnStmt;
+import soot.jimple.internal.JReturnVoidStmt;
 import soot.options.Options;
+import tracing.TracePoint;
 
 /**
  * Hello world!
@@ -47,20 +58,16 @@ public class LumosAgent {
     public static Map<String, SootClass> classMap = new HashMap<>();
     public static Map<String, Body> bodyMap = new HashMap<>();
 
+    public static Set<TracePoint> allTPs = new HashSet<>();
+    public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
+
     public static byte[] forTest;
     public static String testclass;
-    public static String cpath = "/app/classes";
-    public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
-    // public static String jarpath =
-    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent\\io\\opentelemetry\\javaagent\\shaded";
-    // public static String jarpath =
-    // "C:\\Users\\jchen\\.m2\\repository\\io\\opentelemetry\\opentelemetry-api-trace\\0.13.1\\opentelemetry-api-trace-0.13.1.jar";
-    // public static String cpath =
-    // "/mnt/c/Users/jchen/Desktop/Academic/lumos/lumos-experiment/ts-launcher/target/classes";
+    // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
     // public static String cpath = "/app/classes";
-    // public clas
-    // public static String cpath =
-    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\test";
+    public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
+
+    public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
 
     public static void premain(String agentArgs, Instrumentation inst) {
 
@@ -79,24 +86,12 @@ public class LumosAgent {
                 // return transformed class file.
 
                 if (LumosAgent.cloader == null && loader != null
-                        && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                // && loader.getClass().getName().contains("LaunchedURLClassLoader")
+                ) {
                     System.out.println("Hooked " + loader);
                     LumosAgent.cloader = loader;
                 }
-                // p(className);
-                // if(className.contains("ServiceImpl")){
-                // System.out.println("[VVVV] " + loader + ": " + new LoaderClassPath(loader));
-                // ClassPool pool = new ClassPool(true);
-                // ClassPool.doPruning = true;
-                // pool.appendClassPath(new LoaderClassPath(loader));
-                // System.out.println("[VVV] " + pool);
-                // try{
-                // System.out.println("[VV] " + pool.get("travel.service.TravelServiceImpl"));
-                // }
-                // catch(Exception e){
-                // e.printStackTrace();
-                // }
-                // }
+
                 return classFileBuffer;
             }
         });
@@ -108,6 +103,21 @@ public class LumosAgent {
     public static void agentmain(String agentArgs, Instrumentation inst) {
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
+    }
+
+    public static void addTP(TracePoint tp) {
+        allTPs.add(tp);
+        if (!methodTPMap.containsKey(tp.getSm())) {
+            methodTPMap.put(tp.getSm(), new HashSet<>());
+        }
+        methodTPMap.get(tp.getSm()).add(tp);
+    }
+
+    public static void removeTP(TracePoint tp) {
+        allTPs.remove(tp);
+        if (methodTPMap.containsKey(tp.getSm())) {
+            methodTPMap.get(tp.getSm()).remove(tp);
+        }
     }
 
     public static void setupSoot(String path) {
@@ -235,55 +245,83 @@ public class LumosAgent {
         // Jimple.v().newStaticInvokeExpr(null, null)
         // p(sc.getMethods().toString());
         // p(sc.getPackageName().toString());
-        for (SootClass scc : Scene.v().getClasses()) {
-            if (scc.toString().contains("opentelemetry")) {
-                p(scc.toString());
-                p(scc.getMethods().toString());
-            }
-        }
+        // for (SootClass scc : Scene.v().getClasses()) {
+        // if (scc.toString().contains("opentelemetry")) {
+        // p(scc.toString());
+        // p(scc.getMethods().toString());
+        // }
+        // }
         // if (true)
         // return;
         analyzePath(cpath);
+
         String methodName = "sendInsidePayment";
-        // String methodName = "foo";
         String valueName = "$stack29";
-        // String valueName = "l1";
         String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
-        // String stmtString = "l1 = l0 + 1";
 
-        Body b = findBody(methodName);
-        SootMethod sm = finMethod(methodName);
-        SootClass sclass = findClass(sm.getDeclaringClass().getName());
-        testclass = sclass.toString();
+        TracePoint tp = new TracePoint(methodName, stmtString, valueName);
+        addTP(tp);
+        instrument();
+    }
 
-        Value local = CompileUtils.findLocal(b, valueName);
-        Stmt stmt = CompileUtils.findStmt(b, stmtString);
-        List<Stmt> inserts = CompileUtils.generateTPStmts(b, local,
-                Collections.emptyList(), false);
-        p(inserts.toString());
-        CompileUtils.insertAt(b, stmt, inserts, false);
-        sm.setActiveBody(b);
+    public static Map<String, byte[]> instrument() {
+        Map<String, byte[]> cmap = new HashMap<>();
+        Set<SootClass> scToCompile = new HashSet<>();
+        for (String smstr : methodTPMap.keySet()) {
+            SootMethod sm = finMethod(smstr);
+            Body b = findBody(sm.toString());
+            SootClass sclass = findClass(sm.getDeclaringClass().getName());
+            List<Stmt> targetstmts = new ArrayList<>();
+            List<TracePoint> targetTPs = new ArrayList<>();
+            PatchingChain<Unit> units = b.getUnits();
 
-        byte[] bytecode = CompileUtils.compileClass(sclass);
-        forTest = bytecode;
+            // This two-step way is needed to avoid inserted stmts
+            // from breaking the labeling
+            for (TracePoint tp : methodTPMap.get(smstr)) {
+                Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), -1);
+                targetstmts.add(stmt);
+                targetTPs.add(tp);
+            }
 
-        // String dirname = "AAA";
-        // File outputDir = new File(dirname);
-        // if (!outputDir.exists()) {
-        // outputDir.mkdir();
-        // }
-        // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
-        // FileOutputStream classout;
-        // try {
-        // classout = new FileOutputStream(file2);
-        // classout.write(bytecode);
-        // classout.close();
-        // } catch (FileNotFoundException e) {
-        // e.printStackTrace();
-        // } catch (IOException e) {
-        // // TODO Auto-generated catch block
-        // e.printStackTrace();
-        // }
+            for (int i = 0; i < targetstmts.size(); i++) {
+                Stmt stmt = targetstmts.get(i);
+                TracePoint tp = targetTPs.get(i);
+                Value base = CompileUtils.findLocal(stmt, tp.getVal());
+                List<String> refs = tp.getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
+                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false);
+                boolean isBefore = stmt instanceof JIfStmt || stmt instanceof JReturnStmt
+                        || stmt instanceof JReturnVoidStmt ||
+                        stmt instanceof JGotoStmt;
+                CompileUtils.insertAt(units, stmt, inserts, isBefore);
+            }
+            sm.setActiveBody(b);
+            scToCompile.add(sclass);
+        }
+
+        for (SootClass sclass : scToCompile) {
+            byte[] bytecode = CompileUtils.compileClass(sclass);
+            forTest = bytecode;
+            cmap.put(sclass.toString(), bytecode);
+
+            String dirname = "AAA";
+            File outputDir = new File(dirname);
+            if (!outputDir.exists()) {
+                outputDir.mkdir();
+            }
+            File file2 = new File(dirname + "/" + sclass.getName() + ".class");
+            FileOutputStream classout;
+            try {
+                classout = new FileOutputStream(file2);
+                classout.write(bytecode);
+                classout.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        return cmap;
     }
 
     public static void main(String args[]) {
