@@ -172,7 +172,7 @@ public class LumosAgent {
         Options.v().setPhaseOption("jb", "optimize:false");
         Options.v().setPhaseOption("jb", "use-original-names:true");
         Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
-        Options.v().setPhaseOption("jb.ls", "enabled:false");
+        Options.v().setPhaseOption("jb", "stabilize-local-names:true");
         // Need this to avoid the need to provide an entry point
         Options.v().setPhaseOption("cg", "all-reachable:true");
 
@@ -273,13 +273,13 @@ public class LumosAgent {
             // from breaking the labeling
             for (TracePoint tp : methodTPMap.get(smstr)) {
                 Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), tp.getLine());
-                // if(stmt.){
-                //     p("--- " + tp);
-                //     for(Unit u: b.getUnits()){
-                //         p(u +"");
-                //     }
-                //     // p(b.getUnits());
-                // }
+                if(stmt == null){
+                    p("--- " + tp);
+                    for(Unit u: b.getUnits()){
+                        p(u +"");
+                    }
+                    // p(b.getUnits());
+                }
                 targetstmts.add(stmt);
                 targetTPs.add(tp);
             }
@@ -290,6 +290,9 @@ public class LumosAgent {
                 // p("--- " + tp);
                 // p("??? " + stmt);
                 Value base = CompileUtils.findLocal(stmt, tp.getVal());
+                if (base.getType().toString().contains("List")) {
+                    continue;
+                }
                 List<String> refs = tp.getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
                 List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt);
                 boolean isBefore = stmt instanceof JIfStmt || stmt instanceof JReturnStmt

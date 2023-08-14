@@ -143,6 +143,7 @@ public class CompileUtils {
                     continue;
                 String actual = ref.trim();
                 SootField sf = null;
+                // System.out.println("!!! " + curr +", " + (curr == null ? "#" : curr.getType().toString()));
                 for (SootField f : sc.getFields()) {
                     if (f.getName().contains(actual)) {
                         sf = f;

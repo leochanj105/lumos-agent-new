@@ -76,7 +76,7 @@ public class AgentThread implements Runnable, MessageHandler {
         // System.out.println("");
         // System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
         boolean changed = false;
-        JSONObject obj = new JSONObject(jstr);
+        JSONObject obj = new JSONObject(jstr);  
         String x = obj.getString("type");
         if (x.equals("add")) {
             JSONArray arr = obj.getJSONArray("tps");
