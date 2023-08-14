@@ -64,7 +64,8 @@ public class LumosAgent {
 
     public static byte[] forTest;
     public static String testclass;
-    public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
+    // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
+    public static String jarpath = "/app/opentelemetry-javaagent.jar";
     public static String cpath = "/app/classes";
     // public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
@@ -108,19 +109,29 @@ public class LumosAgent {
         thread.start();
     }
 
-    public static void addTP(TracePoint tp) {
+    public static boolean addTP(TracePoint tp) {
+        if(allTPs.contains(tp)){
+            return false;
+        }
         allTPs.add(tp);
         if (!methodTPMap.containsKey(tp.getSm())) {
             methodTPMap.put(tp.getSm(), new HashSet<>());
         }
+        
         methodTPMap.get(tp.getSm()).add(tp);
+        return true;
     }
 
-    public static void removeTP(TracePoint tp) {
+    public static boolean removeTP(TracePoint tp) {
+        if(!allTPs.contains(tp)){
+            return false;
+        }
         allTPs.remove(tp);
         if (methodTPMap.containsKey(tp.getSm())) {
             methodTPMap.get(tp.getSm()).remove(tp);
+            return true;
         }
+        return false;
     }
 
     public static void setupSoot(String path) {
@@ -262,6 +273,13 @@ public class LumosAgent {
             // from breaking the labeling
             for (TracePoint tp : methodTPMap.get(smstr)) {
                 Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), tp.getLine());
+                // if(stmt.){
+                //     p("--- " + tp);
+                //     for(Unit u: b.getUnits()){
+                //         p(u +"");
+                //     }
+                //     // p(b.getUnits());
+                // }
                 targetstmts.add(stmt);
                 targetTPs.add(tp);
             }
@@ -269,40 +287,48 @@ public class LumosAgent {
             for (int i = 0; i < targetstmts.size(); i++) {
                 Stmt stmt = targetstmts.get(i);
                 TracePoint tp = targetTPs.get(i);
+                // p("--- " + tp);
+                // p("??? " + stmt);
                 Value base = CompileUtils.findLocal(stmt, tp.getVal());
                 List<String> refs = tp.getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
-                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false);
+                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt);
                 boolean isBefore = stmt instanceof JIfStmt || stmt instanceof JReturnStmt
                         || stmt instanceof JReturnVoidStmt ||
                         stmt instanceof JGotoStmt;
                 CompileUtils.insertAt(units, stmt, inserts, isBefore);
+                
             }
             sm.setActiveBody(b);
+            // if(sm.toString().contains("getOrderById")){
+            //     p("-----\n"+sm.toString());
+            //     p(b+"");
+            // }
             scToCompile.add(sclass);
         }
 
         for (SootClass sclass : scToCompile) {
             byte[] bytecode = CompileUtils.compileClass(sclass);
             forTest = bytecode;
+            // if(sclass.)
             cmap.put(sclass.toString(), bytecode);
 
-            String dirname = "AAA";
-            File outputDir = new File(dirname);
-            if (!outputDir.exists()) {
-                outputDir.mkdir();
-            }
-            File file2 = new File(dirname + "/" + sclass.getName() + ".class");
-            FileOutputStream classout;
-            try {
-                classout = new FileOutputStream(file2);
-                classout.write(bytecode);
-                classout.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            // String dirname = "AAA";
+            // File outputDir = new File(dirname);
+            // if (!outputDir.exists()) {
+            //     outputDir.mkdir();
+            // }
+            // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
+            // FileOutputStream classout;
+            // try {
+            //     classout = new FileOutputStream(file2);
+            //     classout.write(bytecode);
+            //     classout.close();
+            // } catch (FileNotFoundException e) {
+            //     e.printStackTrace();
+            // } catch (IOException e) {
+            //     // TODO Auto-generated catch block
+            //     e.printStackTrace();
+            // }
         }
         return cmap;
     }

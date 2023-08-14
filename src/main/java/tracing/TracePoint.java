@@ -25,6 +25,11 @@ public class TracePoint {
     }
 
     @Override
+    public String toString(){
+        return this.sm+": " + this.stmt +" ==> " + this.val + "." + this.suffix;
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

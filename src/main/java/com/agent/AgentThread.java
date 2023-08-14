@@ -74,14 +74,16 @@ public class AgentThread implements Runnable, MessageHandler {
 
     public void handleJSON(String jstr) {
         // System.out.println("");
-        System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
-
+        // System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
+        boolean changed = false;
         JSONObject obj = new JSONObject(jstr);
         String x = obj.getString("type");
         if (x.equals("add")) {
             JSONArray arr = obj.getJSONArray("tps");
+            // System.out.println("??? " + arr.length());
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
+                // System.out.println(i+": " + tp);
                 String id = tp.getString("id");
                 String tptype = tp.getString("tptype");
                 String method = tp.getString("method");
@@ -92,18 +94,20 @@ public class AgentThread implements Runnable, MessageHandler {
                     String value = tp.getString("value");
                     List<String> suffix = new ArrayList<>();
                     JSONArray suffixarray = tp.getJSONArray("suffix");
+                    // String suffixstr = tp.getString("suffix");
+                    // System.out.println("suffix: "+ suffixarray +", " + suffixarray.length());
+
                     for (int j = 0; j < suffixarray.length(); j++) {
-                        suffix.add(suffixarray.getJSONObject(i).toString());
+                        suffix.add(suffixarray.getString(j));
                     }
+                    // System.out.println("reached here 2");
                     TracePoint actualtp = new TracePoint(id, method, stmt, line, value, suffix);
-                    // System.out.println()
-                    System.out.println("??????????\n" + actualtp.getSuffix());    
+                    boolean result = LumosAgent.addTP(actualtp);
+                    if(result){
+                        changed = true;
+                    }
+                    // System.out.println("?????????? " + actualtp);    
                 } 
-                // else if (tptype.equals("span")) {
-                // } else if (tptype.equals("timing")) {
-                //     int line1 = tp.getInt("line1");
-                //     int line2 = tp.getInt("line2");
-                // }
             }
 
         } else if (x.equals("remove")) {
@@ -112,25 +116,20 @@ public class AgentThread implements Runnable, MessageHandler {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
                 String id = tp.getString("id");
-                // DynamicModification mod = tpmap.get(id);
-                // if (mod != null) {
-                    // tpmap.remove(id);
-                    // this.manager.remove(mod);
-                    // try {
-                    //     this.manager.install();
-                    // } catch (Exception e) {
-                    //     e.printStackTrace();
-                    // }
-                // }
+                
             }
         } else {
             System.out.println("Not implemented!");
+        }
+        if(changed){
+            refreshTPs();
         }
     }
 
     public void refreshTPs(){
         System.out.println("[LUMOS] Instrumenting...");
         Map<String, byte[]> cmap= LumosAgent.instrument();
+        System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
         // LumosAgent.p(LumosAgent.forTest.length + "");
         try {
@@ -143,10 +142,15 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void handleMessage(String message) {
-        System.out.println("Handling " + message);
+        // System.out.println("Handling " + message);
         // if(message.equals("keepalive"))
         // return;
-        handleJSON(message);
+        try{
+            handleJSON(message);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
         /*
          * String[] traceArgs = message.split(",", 0);
          * System.out.println(traceArgs);

@@ -48,6 +48,8 @@ import soot.jimple.StringConstant;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JInstanceFieldRef;
 import soot.options.Options;
+import soot.toolkits.graph.BriefUnitGraph;
+import soot.jimple.NullConstant;
 
 public class CompileUtils {
 
@@ -72,7 +74,7 @@ public class CompileUtils {
         // body.validate();
     }
 
-    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint) {
+    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori) {
         Local tpLocal = getLocal(body, "tpLocal");
         PatchingChain<Unit> units = body.getUnits();
         if (tpLocal == null) {
@@ -134,7 +136,7 @@ public class CompileUtils {
             // App.p(baseval);
             Value curr = getLocal(body, baseval);
             List<Local> locallist = new ArrayList<>();
-
+            
             for (String ref : suffix) {
                 SootClass sc = LumosAgent.classMap.get(curr.getType().toString());
                 if (ref.isEmpty())
@@ -173,8 +175,10 @@ public class CompileUtils {
                 } else {
                     actualBase = (Local) curr;
                 }
-                // BooleanType
-                // sf.getTy
+                Stmt orinext = (Stmt) (new BriefUnitGraph(body)).getSuccsOf(stori).get(0);
+                Stmt branchnull = Jimple.v().newIfStmt(Jimple.v().newEqExpr(actualBase, NullConstant.v()), orinext);
+                stlist.add(branchnull);
+
                 Local tmp = Jimple.v().newLocal("tpfield" + (id++), sf.getType());
                 body.getLocals().add(tmp);
                 if (sf.isPrivate() && !curr.toString().equals("this")) {
