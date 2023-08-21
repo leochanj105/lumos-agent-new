@@ -294,7 +294,7 @@ public class LumosAgent {
                     continue;
                 }
                 List<String> refs = tp.getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
-                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt);
+                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt, tp.getUid());
                 boolean isBefore = stmt instanceof JIfStmt || stmt instanceof JReturnStmt
                         || stmt instanceof JReturnVoidStmt ||
                         stmt instanceof JGotoStmt;

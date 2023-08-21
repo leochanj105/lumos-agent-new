@@ -74,7 +74,7 @@ public class CompileUtils {
         // body.validate();
     }
 
-    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori) {
+    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori, String name) {
         Local tpLocal = getLocal(body, "tpLocal");
         PatchingChain<Unit> units = body.getUnits();
         if (tpLocal == null) {
@@ -196,7 +196,7 @@ public class CompileUtils {
             // for(int i = 0; i < un.getSuffix())
         }
 
-        AssignStmt stmt = Jimple.v().newAssignStmt(tmpString1, StringConstant.v(combine(v, suffix) + "="));
+        AssignStmt stmt = Jimple.v().newAssignStmt(tmpString1, StringConstant.v("[" + name + "] "+combine(v, suffix) + "="));
         stlist.add(stmt);
         // Value actualVal = null;
         // if(cv.g)
