@@ -165,11 +165,11 @@
 
     <dependencies>
 
-      <dependency>
+      <!-- <dependency>
           <groupId>io.opentelemetry</groupId>
           <artifactId>opentelemetry-api-trace</artifactId>
           <version>0.13.1</version>
-      </dependency>
+      </dependency> -->
 
     <dependency>
 	<groupId>org.json</groupId>
