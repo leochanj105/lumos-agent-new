@@ -29,6 +29,8 @@ import java.net.URLClassLoader;
 import soot.Body;
 import soot.G;
 import soot.PatchingChain;
+import soot.RefType;
+import soot.SootField;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
@@ -77,6 +79,8 @@ public class LumosAgent {
         // classPool.appendClassPath(new
         // LoaderClassPath(Thread.currentThread().getContextClassLoader()));
         // System.out.println("[XXXX] " + classPool);
+        setupSoot(cpath);
+        analyzePath(cpath);
         inst.addTransformer(new ClassFileTransformer() {
             @Override
             public byte[] transform(
@@ -85,21 +89,40 @@ public class LumosAgent {
                     Class<?> classBeingRedefined, // null if class was not previously loaded
                     ProtectionDomain protectionDomain,
                     byte[] classFileBuffer) {
-                // return transformed class file.
 
-                if (LumosAgent.cloader == null && loader != null
+                if (loader != null
                     && loader.getClass().getName().contains("LaunchedURLClassLoader")
                 ) {
-                    System.out.println("Hooked " + loader);
-                    LumosAgent.cloader = loader;
+                    if(LumosAgent.cloader == null){
+                        System.out.println("Hooked " + loader);
+                        LumosAgent.cloader = loader;
+                    }
+                    
+                    String targetName = "order.domain.Order";
+                    String actualName = targetName.replace('.', File.separatorChar);
+                    // if(className.contains("domain/Order")){
+                    //     System.out.println(className + ", " + loader.getClass());
+                    //     System.out.println(actualName);
+                    // }
+                    
+                    if(className.equals(actualName)){
+                        System.out.println("adding to " + className);
+                        SootClass sclass = null;
+                        while(sclass == null){
+                            sclass = findClassExact(targetName);
+                        }
+
+                        byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "context");
+                        System.out.println("added to " + className);
+                        return cbuffer;
+                    }
                 }
 
                 return classFileBuffer;
             }
         });
         // play();
-        setupSoot(cpath);
-        analyzePath(cpath);
+        
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
     }
@@ -107,6 +130,19 @@ public class LumosAgent {
     public static void agentmain(String agentArgs, Instrumentation inst) {
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
+    }
+
+    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname){
+        sclass.addField(Scene.v().makeSootField(fieldname, RefType.v(type), soot.Modifier.PUBLIC));
+        byte[] bytecode = CompileUtils.compileClass(sclass);
+        return bytecode;
+    }
+
+    public static Map<String, byte[]> addField(String classname, String type, String fieldname){
+        Map<String, byte[]> cmap = new HashMap<>();
+        SootClass sclass = findClass(classname);
+        cmap.put(sclass.toString(), addFieldToClass(sclass, type, fieldname));
+        return cmap;
     }
 
     public static boolean addTP(TracePoint tp) {
@@ -236,6 +272,15 @@ public class LumosAgent {
         return null;
     }
 
+    public static SootClass findClassExact(String name) {
+        for (String s : classMap.keySet()) {
+            if (s.equals(name)) {
+                return classMap.get(s);
+            }
+        }
+        return null;
+    }
+
     public static SootClass findClass(String name) {
         for (String s : classMap.keySet()) {
             if (s.contains(name)) {
@@ -264,7 +309,7 @@ public class LumosAgent {
         for (String smstr : methodTPMap.keySet()) {
             SootMethod sm = finMethod(smstr);
             Body b = findBody(sm.toString());
-            SootClass sclass = findClass(sm.getDeclaringClass().getName());
+            SootClass sclass = findClassExact(sm.getDeclaringClass().getName());
             List<Stmt> targetstmts = new ArrayList<>();
             List<TracePoint> targetTPs = new ArrayList<>();
             PatchingChain<Unit> units = b.getUnits();

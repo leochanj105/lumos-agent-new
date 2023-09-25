@@ -118,12 +118,28 @@ public class AgentThread implements Runnable, MessageHandler {
                 String id = tp.getString("id");
                 
             }
-        } else {
+        } 
+        else if (x.equals("field")){
+            String classname = obj.getString("classname");
+            String type = obj.getString("type");
+            String fieldname = obj.getString("fieldname");
+            addField(classname, type, fieldname);
+            // changed = true;
+            
+        }
+        else {
             System.out.println("Not implemented!");
         }
         if(changed){
             refreshTPs();
         }
+    }
+
+
+    public void addField(String classname, String type, String fieldname){
+        Map<String, byte[]> cmap=LumosAgent.addField(classname, type, fieldname);
+        System.out.println(cmap.keySet());
+        reload(cmap);
     }
 
     public void refreshTPs(){
@@ -132,6 +148,11 @@ public class AgentThread implements Runnable, MessageHandler {
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
         // LumosAgent.p(LumosAgent.forTest.length + "");
+        reload(cmap);
+        
+    }
+
+    public void reload(Map<String, byte[]> cmap){
         try {
             this.agent.reload(cmap);
         } catch (UnmodifiableClassException e) {
@@ -193,19 +214,23 @@ public class AgentThread implements Runnable, MessageHandler {
         //Connect to websocket controller server
         connect("ws://lumos:8765");
 
-        /*
-         * // A test of adding a tracepoint, then remove it...
-         * int seconds = 20;
-         * for(int i = 0; i < seconds; i++){
-         * try{
-         * Thread.sleep(1000);
-         * }
-         * catch(Exception e){
-         * e.printStackTrace();
-         * }
-         * System.out.println("[LUMOS] Count " + (seconds - i));
-         * }
-         * System.out.println("[LUMOS] Instrumenting...");
+        
+        // A test of adding a tracepoint, then remove it...
+        // if(sname.contains("ts-order-service")){
+        //     int seconds = 20;
+        //     for(int i = 0; i < seconds; i++){
+        //         try{
+        //             Thread.sleep(1000);
+        //         }
+        //         catch(Exception e){
+        //             e.printStackTrace();
+        //         }
+        //         System.out.println("[LUMOS] Count " + (seconds - i));
+        //     }
+        //     System.out.println("[LUMOS] Instrumenting...");
+        //     addField("order.domain.Order", "java.lang.String", "context");
+        // }
+         /*
          * 
          * 
          * //DynamicModification modifyMethod = new InstructionModification(CLASSNAME,
