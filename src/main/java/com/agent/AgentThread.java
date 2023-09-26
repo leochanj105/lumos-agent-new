@@ -29,6 +29,19 @@ import org.json.*;
 import java.util.Map;
 import java.util.HashMap;
 
+import tracing.DBInstrumentationPoint;
+
+import soot.SootClass;
+import soot.SootField;
+import soot.SootFieldRef;
+import soot.SootMethod;
+import soot.Unit;
+import soot.jimple.Stmt;
+import soot.Value;
+import soot.Body;
+import soot.ValueBox;
+
+
 public class AgentThread implements Runnable, MessageHandler {
     public Instrumentation inst;
     public JVMAgent agent;
@@ -194,6 +207,61 @@ public class AgentThread implements Runnable, MessageHandler {
          */
     }
 
+    public static void countDown(int seconds){
+        for(int i = 0; i < seconds; i++){
+            try{
+                Thread.sleep(1000);
+            }
+            catch(Exception e){
+                e.printStackTrace();
+            }
+            System.out.println("[LUMOS] Count " + (seconds - i));
+        }
+    }
+
+    public void playground(int seconds){
+        // int seconds = 30;
+        countDown(seconds);
+        System.out.println("[LUMOS] Instrumenting...");
+        SootClass sclass = LumosAgent.findClassExact("order.service.OrderServiceImpl");
+        List<TracePoint> tps = new ArrayList<>();
+        SootMethod sm = LumosAgent.findMethod("create", "order.service.OrderServiceImpl");
+        System.out.println(sm);
+        Body b = LumosAgent.findBody(sm.toString());
+        List<Stmt> saveStmts = new ArrayList<>();
+        List<Stmt> savedObjs = new ArrayList<>();
+        for(Unit u : b.getUnits()){
+            Stmt stmt = (Stmt) u;
+            if(stmt.containsInvokeExpr()){
+                if(stmt.getInvokeExpr().getMethod().toString().contains("save")){
+                    Value objSaved = stmt.getInvokeExpr().getArgs().get(0);
+                    System.out.println(stmt.getJavaSourceStartLineNumber() + ":" + stmt +", " + objSaved);
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString());
+                    LumosAgent.addTP(dbinst);
+                    refreshTPs();
+                    
+                    // SootClass oclass = LumosAgent.classMap.get("order.domain.Order");
+                    // SootField sf = null;
+                    // for (SootField f : oclass.getFields()) {
+                    //     if (f.getName().contains("LumosContext")) {
+                    //         sf = f;
+                    //         break;
+                    //     }
+                    // }
+                    // if (sf != null) {
+                    //     System.out.println(sf);
+                    // }
+                    // AssignStmt astmt = Jimple.v().newInstanceFieldRef();
+                    // saveStmts.add(stmt);
+                }
+            }
+        }
+
+
+        
+    }
+    
+
     @Override
     public void run() {
         // Wait Until we hooked the Spring classloader
@@ -214,22 +282,11 @@ public class AgentThread implements Runnable, MessageHandler {
         //Connect to websocket controller server
         connect("ws://lumos:8765");
 
-        
+        while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
-        // if(sname.contains("ts-order-service")){
-        //     int seconds = 20;
-        //     for(int i = 0; i < seconds; i++){
-        //         try{
-        //             Thread.sleep(1000);
-        //         }
-        //         catch(Exception e){
-        //             e.printStackTrace();
-        //         }
-        //         System.out.println("[LUMOS] Count " + (seconds - i));
-        //     }
-        //     System.out.println("[LUMOS] Instrumenting...");
-        //     addField("order.domain.Order", "java.lang.String", "context");
-        // }
+        if(sname.contains("ts-order-service")){
+           playground(5);
+        }
          /*
          * 
          * 

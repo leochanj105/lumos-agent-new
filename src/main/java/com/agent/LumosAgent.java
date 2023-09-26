@@ -44,6 +44,7 @@ import soot.jimple.internal.JReturnStmt;
 import soot.jimple.internal.JReturnVoidStmt;
 import soot.options.Options;
 import tracing.TracePoint;
+import tracing.*;
 
 /**
  * Hello world!
@@ -55,15 +56,20 @@ public class LumosAgent {
     // public Agent(ClassLoader loader){
     // this.loader = loader;
     // }
+
+    public static boolean playGroundFlag = false;
     public static ClassLoader cloader = null;
     public static boolean analyzeReady = false;
     public static Map<String, SootMethod> methodMap = new HashMap<>();
     public static Map<String, SootClass> classMap = new HashMap<>();
     public static Map<String, Body> bodyMap = new HashMap<>();
 
-    public static Set<TracePoint> allTPs = new HashSet<>();
-    public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
+    public static Set<LumosInstrumentation> allTPs = new HashSet<>();
+    public static HashMap<String, Set<LumosInstrumentation>> methodTPMap = new HashMap<>();
 
+    // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
+    // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
+    
     public static byte[] forTest;
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
@@ -112,8 +118,10 @@ public class LumosAgent {
                             sclass = findClassExact(targetName);
                         }
 
-                        byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "context");
+                        byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
+
                         System.out.println("added to " + className);
+                        playGroundFlag = true;
                         return cbuffer;
                     }
                 }
@@ -145,7 +153,7 @@ public class LumosAgent {
         return cmap;
     }
 
-    public static boolean addTP(TracePoint tp) {
+    public static boolean addTP(LumosInstrumentation tp) {
         if(allTPs.contains(tp)){
             return false;
         }
@@ -158,7 +166,7 @@ public class LumosAgent {
         return true;
     }
 
-    public static boolean removeTP(TracePoint tp) {
+    public static boolean removeTP(LumosInstrumentation tp) {
         if(!allTPs.contains(tp)){
             return false;
         }
@@ -263,9 +271,25 @@ public class LumosAgent {
         return null;
     }
 
-    public static SootMethod finMethod(String name) {
+    public static SootMethod findMethod(String name) {
         for (String s : methodMap.keySet()) {
             if (s.contains(name)) {
+                return methodMap.get(s);
+            }
+        }
+        return null;
+    }
+
+    public static SootMethod findMethod(String ...names) {
+        for (String s : methodMap.keySet()) {
+            boolean match = true;
+            for(String name: names){
+                if (!s.contains(name)) {
+                    match = false;
+                    break;
+                }
+            }
+            if(match){
                 return methodMap.get(s);
             }
         }
@@ -307,52 +331,32 @@ public class LumosAgent {
         Map<String, byte[]> cmap = new HashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : methodTPMap.keySet()) {
-            SootMethod sm = finMethod(smstr);
+            SootMethod sm = findMethod(smstr);
             Body b = findBody(sm.toString());
-            SootClass sclass = findClassExact(sm.getDeclaringClass().getName());
+            SootClass sclass = findClass(sm.getDeclaringClass().getName());
             List<Stmt> targetstmts = new ArrayList<>();
-            List<TracePoint> targetTPs = new ArrayList<>();
+            List<LumosInstrumentation> targetInsts = new ArrayList<>();
             PatchingChain<Unit> units = b.getUnits();
 
             // This two-step way is needed to avoid inserted stmts
             // from breaking the labeling
-            for (TracePoint tp : methodTPMap.get(smstr)) {
-                Stmt stmt = CompileUtils.searchStmt(b, tp.getStmt(), tp.getLine());
-                if(stmt == null){
-                    p("--- " + tp);
-                    for(Unit u: b.getUnits()){
-                        p(u +"");
-                    }
-                    // p(b.getUnits());
-                }
+            for (LumosInstrumentation inst : methodTPMap.get(smstr)) {
+                inst.setBody(b);
+                Stmt stmt = inst.getActualStmt();
                 targetstmts.add(stmt);
-                targetTPs.add(tp);
+                targetInsts.add(inst);
             }
 
             for (int i = 0; i < targetstmts.size(); i++) {
                 Stmt stmt = targetstmts.get(i);
-                TracePoint tp = targetTPs.get(i);
-                // p("--- " + tp);
-                // p("??? " + stmt);
-                Value base = CompileUtils.findLocal(stmt, tp.getVal());
-                if (base.getType().toString().contains("List")) {
-                    continue;
-                }
-                List<String> refs = tp.getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
-                List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt, tp.getUid());
-                boolean isBefore = stmt instanceof JIfStmt || stmt instanceof JReturnStmt
-                        || stmt instanceof JReturnVoidStmt ||
-                        stmt instanceof JGotoStmt;
-                CompileUtils.insertAt(units, stmt, inserts, isBefore);
-                
+                LumosInstrumentation inst = targetInsts.get(i);
+                List<Stmt> inserts = inst.addInsts();
+                CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
             }
             sm.setActiveBody(b);
-            // if(sm.toString().contains("getOrderById")){
-            //     p("-----\n"+sm.toString());
-            //     p(b+"");
-            // }
             scToCompile.add(sclass);
         }
+
 
         for (SootClass sclass : scToCompile) {
             byte[] bytecode = CompileUtils.compileClass(sclass);
@@ -387,4 +391,6 @@ public class LumosAgent {
         // p(sclass.toString());
 
     }
+
+    
 }

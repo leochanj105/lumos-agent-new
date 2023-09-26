@@ -2,14 +2,30 @@ package tracing;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class TracePoint {
+import com.agent.compile.CompileUtils;
+
+import soot.Body;
+import soot.PatchingChain;
+import soot.SootMethod;
+import soot.Unit;
+import soot.Value;
+import soot.jimple.Stmt;
+import soot.jimple.internal.JGotoStmt;
+import soot.jimple.internal.JIfStmt;
+import soot.jimple.internal.JReturnStmt;
+import soot.jimple.internal.JReturnVoidStmt;
+
+public class TracePoint implements LumosInstrumentation {
     public String sm;
     public String stmt;
     public String val;
     public int line;
     public List<String> suffix;
     public String uid;
+
+    public Body body;
 
     public TracePoint(String uid, String sm, String stmt, int line, String val, List<String> suffix) {
         this.uid = uid;
@@ -127,6 +143,39 @@ public class TracePoint {
 
     public void setUid(String uid) {
         this.uid = uid;
+    }
+
+    @Override
+    public Body getBody() {
+        return this.body;
+    }
+
+    @Override
+    public boolean isBefore() {
+        Stmt stmt = getActualStmt();
+        return stmt instanceof JIfStmt || stmt instanceof JReturnStmt
+                || stmt instanceof JReturnVoidStmt ||
+                stmt instanceof JGotoStmt;
+    }
+
+    @Override
+    public void setBody(Body b) {
+        this.body = b;
+    }
+
+    @Override
+    public List<Stmt> addInsts() {
+        Body b = getBody();
+        Stmt stmt = getActualStmt();
+        Value base = CompileUtils.findLocal(stmt, getVal());
+        List<String> refs = getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
+        List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt, getUid());
+        return inserts;
+    }
+
+    @Override
+    public Stmt getActualStmt() {
+        return CompileUtils.searchStmt(getBody(), getStmt(), -1);
     }
 
 }
