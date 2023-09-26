@@ -73,19 +73,10 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
                 InstanceInvokeExpr inexpr = (InstanceInvokeExpr) iexpr;
                 if (inexpr.getMethod().toString().contains("save")) {
                     Value order = inexpr.getArg(0);
-                    SootClass sclass = LumosAgent.classMap.get(order.getType().toString());
-                    SootField sf = null;
-                    for (SootField f : sclass.getFields()) {
-                        if (f.getName().contains("LumosContext")) {
-                            sf = f;
-                            break;
-                        }
-                    }
-                    if (sf != null) {
-                        AssignStmt astmt = Jimple.v().newAssignStmt(Jimple.v().newInstanceFieldRef(order, sf.makeRef()),
-                                StringConstant.v("CONTEXT_PLACEHOLDER"));
-                        insts.add(astmt);
-                    }
+                    
+                    // if (sf != null) {
+                    insts = CompileUtils.generateDBStmts(body, order);
+                    // }
 
                 }
             }

@@ -229,6 +229,8 @@ public class LumosAgent {
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
         Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                 SootClass.SIGNATURES);
+        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
+                SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
         // SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
