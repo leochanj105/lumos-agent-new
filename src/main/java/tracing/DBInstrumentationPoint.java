@@ -7,6 +7,7 @@ import java.util.List;
 
 import soot.Body;
 import soot.SootClass;
+import soot.SootMethod;
 import soot.SootField;
 import soot.Value;
 import soot.jimple.AssignStmt;
@@ -15,6 +16,9 @@ import soot.jimple.InvokeExpr;
 import soot.jimple.Jimple;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
+import soot.Local;
+import soot.RefType;
+import soot.IntType;
 
 import java.util.Objects;
 
@@ -27,9 +31,12 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
     // public List<Stmt> stmts;
     public Body body;
 
-    public DBInstrumentationPoint(String sm, String stmt) {
+    public boolean isInject;
+
+    public DBInstrumentationPoint(String sm, String stmt, boolean isInject) {
         this.sm = sm;
         this.stmt = stmt;
+        this.isInject = isInject;
     }
 
     @Override
@@ -67,17 +74,70 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
     public List<Stmt> addInsts() {
         List<Stmt> insts = new ArrayList<>();
         Stmt stmt = getActualStmt();
+        String field = "TEST";
+
         if (stmt.containsInvokeExpr()) {
             InvokeExpr iexpr = stmt.getInvokeExpr();
             if (iexpr instanceof InstanceInvokeExpr) {
                 InstanceInvokeExpr inexpr = (InstanceInvokeExpr) iexpr;
-                if (inexpr.getMethod().toString().contains("save")) {
-                    Value order = inexpr.getArg(0);
-                    
-                    // if (sf != null) {
-                    insts = CompileUtils.generateDBStmts(body, order);
-                    // }
+                if(isInject()){
+                    if (inexpr.getMethod().toString().contains("save")) {
+                        Value order = inexpr.getArg(0);
+                        
+                        // if (sf != null) {
+                            insts = CompileUtils.generateDBInjectStmts(body, order, field);
+                        // }
 
+                    }
+                }
+                else {
+                    if(stmt instanceof AssignStmt){
+                        AssignStmt findStmt = (AssignStmt) stmt;
+                        
+                        Local objList = (Local)(findStmt).getLeftOp();
+                        
+                        Local limit = CompileUtils.getLocal(body, "loopLimit", IntType.v());
+                        SootMethod sizeMethod = CompileUtils.getMethod("java.util.ArrayList", "int size()");
+                        AssignStmt astmt = Jimple.v().newAssignStmt(limit, Jimple.v().newVirtualInvokeExpr(objList, sizeMethod.makeRef()));
+                        insts.add(astmt);
+
+                        Local loopVar = CompileUtils.getLocal(body, "loopVar", IntType.v());
+                        
+                        List<Stmt> loopStmts = new ArrayList<>();
+                        Local objLocal = CompileUtils.getLocal(body, "objLocal", RefType.v("java.lang.Object"));
+                        Local orderLocal = CompileUtils.getLocal(body, "orderLocal", RefType.v("order.domain.Order"));
+
+                        SootMethod getMethod = CompileUtils.getMethod("java.util.ArrayList", "java.lang.Object get(int)");                        
+                        AssignStmt astmt2 = Jimple.v().newAssignStmt(objLocal, Jimple.v().newVirtualInvokeExpr(objList, getMethod.makeRef(), loopVar));
+                        loopStmts.add(astmt2);
+
+                        AssignStmt astmt3 = Jimple.v().newAssignStmt(orderLocal, Jimple.v().newCastExpr(objLocal, orderLocal.getType()));
+                        loopStmts.add(astmt3);
+                        
+
+                        Local tmpMap = CompileUtils.getLocal(body, "tmpMap", RefType.v("java.util.HashMap"));
+                        SootField sf = CompileUtils.findField(((RefType)orderLocal.getType()).getSootClass(), "LumosContext");
+                        
+                        AssignStmt astmt4 = Jimple.v().newAssignStmt(tmpMap, Jimple.v().newInstanceFieldRef(orderLocal, sf.makeRef()));
+                        loopStmts.add(astmt4);
+
+                        SootMethod getODMethod = CompileUtils.getMethod("java.util.HashMap", "java.lang.Object getOrDefault(java.lang.Object,java.lang.Object)");
+                        AssignStmt astmt5 = Jimple.v().newAssignStmt(objLocal, 
+                            Jimple.v().newVirtualInvokeExpr(tmpMap, getODMethod.makeRef(), StringConstant.v(field), StringConstant.v("UNKNOWN")));
+                        loopStmts.add(astmt5);
+                        
+                        List<Stmt> traceStmts = CompileUtils.generateTPStmts(body, objLocal, Collections.emptyList(), false, null, "WRITECONTEXT_"+field);
+                        loopStmts.addAll(traceStmts);
+
+                        List<Stmt> actualLoop = CompileUtils.generateLoop(body, loopVar, limit, (Stmt)body.getUnits().getSuccOf(findStmt), loopStmts);
+                        insts.addAll(actualLoop);
+                        System.out.println("---------");
+                        insts.forEach(s ->{
+                            System.out.println(s);
+                        });
+
+                        
+                    }
                 }
             }
         }
@@ -116,8 +176,12 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         this.stmt = stmt;
     }
 
+    public boolean isInject(){
+        return isInject;
+    }
+
     public boolean isBefore() {
-        return true;
+        return isInject();
     }
 
 }

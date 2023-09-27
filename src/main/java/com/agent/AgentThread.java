@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.ArrayList;
 import tracing.TracePoint;
 
+import com.agent.compile.CompileUtils;
+
 import java.lang.reflect.Field;
 import java.lang.ClassLoader;
 import java.util.Vector;
@@ -28,6 +30,7 @@ import javassist.bytecode.ConstPool;
 import org.json.*;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
 
 import tracing.DBInstrumentationPoint;
 
@@ -40,6 +43,13 @@ import soot.jimple.Stmt;
 import soot.Value;
 import soot.Body;
 import soot.ValueBox;
+import soot.IntType;
+import soot.Local;
+import soot.jimple.AssignStmt;
+import soot.jimple.Constant;
+import soot.jimple.InvokeStmt;
+import soot.jimple.Jimple;
+
 
 
 public class AgentThread implements Runnable, MessageHandler {
@@ -236,9 +246,9 @@ public class AgentThread implements Runnable, MessageHandler {
                 if(stmt.getInvokeExpr().getMethod().toString().contains("save")){
                     Value objSaved = stmt.getInvokeExpr().getArgs().get(0);
                     System.out.println(stmt.getJavaSourceStartLineNumber() + ":" + stmt +", " + objSaved);
-                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString());
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString(), true);
                     LumosAgent.addTP(dbinst);
-                    refreshTPs();
+                    
                     
                     // SootClass oclass = LumosAgent.classMap.get("order.domain.Order");
                     // SootField sf = null;
@@ -256,6 +266,34 @@ public class AgentThread implements Runnable, MessageHandler {
                 }
             }
         }
+
+        SootMethod sm2 = LumosAgent.findMethod("queryOrders", "order.service.OrderServiceImpl");
+        Body b2 = sm2.getActiveBody();
+        Stmt findStmt = null;
+        for(Unit u : b2.getUnits()){
+            Stmt stmt = (Stmt) u;
+            if(stmt.containsInvokeExpr()){
+                if(stmt.getInvokeExpr().getMethod().toString().contains("findByAccountId")){
+                    // findStmt = stmt; 
+                    // break;
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false);
+                    LumosAgent.addTP(dbinst);
+                }
+            }
+        }
+        refreshTPs();
+        // Local objList = (Local)((AssignStmt) findStmt).getLeftOp();
+                    
+        // Local limit = CompileUtils.getLocal(b2, "loopLimit", IntType.v());
+        // SootMethod sizeMethod = CompileUtils.getMethod("java.util.ArrayList", "int size()");
+        // AssignStmt astmt = Jimple.v().newAssignStmt(limit, Jimple.v().newVirtualInvokeExpr(objList, sizeMethod.makeRef()));
+        // Local loopVar = CompileUtils.getLocal(b2, "loopVar", IntType.v());
+        // List<Stmt> loopStmts = CompileUtils.generateTPStmts(b2, loopVar, Collections.emptyList(), true, null, "LOOP");
+        // List<Stmt> actualLoop = CompileUtils.generateLoop(b2, limit, loopVar, (Stmt)b2.getUnits().getSuccOf(findStmt), loopStmts);
+        // System.out.println("---------");
+        // actualLoop.forEach(s ->{
+        //     System.out.println(s);
+        // });
 
 
         

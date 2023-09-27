@@ -27,6 +27,7 @@ import com.agent.compile.CompileUtils;
 import java.net.URLClassLoader;
 
 import soot.Body;
+import soot.jimple.JimpleBody;
 import soot.G;
 import soot.PatchingChain;
 import soot.RefType;
@@ -118,8 +119,26 @@ public class LumosAgent {
                             sclass = findClassExact(targetName);
                         }
 
-                        byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
+                        // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
+                        addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
+                        
+                        for(SootMethod method: sclass.getMethods()){
+                            if(method.getName().contains("<init>")){
+                                Body b = findBodyNoClone(method.toString());
+                                System.out.println(method);
+                                if(b !=null){
+                                    List<Stmt> initStmts = CompileUtils.generateInit(b, "LumosContext");
+                                    CompileUtils.insertAt(b.getUnits(), ((JimpleBody) b).getFirstNonIdentityStmt(), initStmts, true);
 
+                                    initStmts.forEach(stmt->{System.out.println(stmt);});
+                                    
+                                    System.out.println("Inserted for " + method);
+                                    method.setActiveBody(b);
+                                }
+                            }
+                        }
+                        byte[] cbuffer = CompileUtils.compileClass(sclass);
+                        
                         System.out.println("added to " + className);
                         playGroundFlag = true;
                         return cbuffer;
@@ -226,6 +245,10 @@ public class LumosAgent {
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
+        Scene.v().addBasicClass("java.lang.Map", SootClass.SIGNATURES);
+        Scene.v().addBasicClass("java.lang.HashMap", SootClass.SIGNATURES);
+        Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
+        Scene.v().addBasicClass("java.lang.Object", SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
         Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                 SootClass.SIGNATURES);
@@ -268,6 +291,15 @@ public class LumosAgent {
         for (String s : bodyMap.keySet()) {
             if (s.contains(name)) {
                 return ((Body) bodyMap.get(s).clone());
+            }
+        }
+        return null;
+    }
+
+    public static Body findBodyNoClone(String name) {
+        for (String s : bodyMap.keySet()) {
+            if (s.contains(name)) {
+                return bodyMap.get(s);
             }
         }
         return null;

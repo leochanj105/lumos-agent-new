@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 import com.agent.LumosAgent;
 
@@ -37,10 +38,16 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
+import soot.Type;
+import soot.IntType;
+
 import soot.baf.BafASMBackend;
 import soot.jimple.AssignStmt;
 import soot.jimple.Constant;
+import soot.jimple.IntConstant;
 import soot.jimple.InvokeStmt;
+import soot.jimple.IfStmt;
+import soot.jimple.GotoStmt;
 import soot.jimple.Jimple;
 import soot.jimple.JimpleBody;
 import soot.jimple.Stmt;
@@ -73,56 +80,67 @@ public class CompileUtils {
         }
         // body.validate();
     }
-    public static List<Stmt> generateDBStmts(Body body, Value order) {
+
+    // public static List<Stmt> assign
+    public static SootMethod getMethod(String className, String methodName){
+        return Scene.v()
+                    .getSootClass(className)
+                    .getMethod(methodName);
+    }
+    public static List<Stmt> generateLoop(Body body, Local loopVar, Value limit,  Stmt breakStmt, List<Stmt> loopStmts){
         List<Stmt> insts = new ArrayList<>();
-        Local tpLocal = CompileUtils.getLocal(body, "tpLocal");
-        PatchingChain<Unit> units = body.getUnits();
-        if (tpLocal == null) {
-            tpLocal = Jimple.v().newLocal("tpLocal",
-                    RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
-            body.getLocals().add(tpLocal);
-            SootMethod currMethod = Scene.v()
-                    .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
-                    .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
-            units.insertBefore(
-                    Jimple.v().newAssignStmt(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
-                    ((JimpleBody) body).getFirstNonIdentityStmt());
+        AssignStmt initStmt = Jimple.v().newAssignStmt(loopVar, IntConstant.v(0));
+        insts.add(initStmt);
+        IfStmt condStmt = Jimple.v().newIfStmt(Jimple.v().newGeExpr(loopVar, limit), breakStmt);
+        insts.add(condStmt);
+        insts.addAll(loopStmts);
+        AssignStmt incrStmt = Jimple.v().newAssignStmt(loopVar, Jimple.v().newAddExpr(loopVar, IntConstant.v(1)));
+        insts.add(incrStmt);
+        GotoStmt gotoStmt = Jimple.v().newGotoStmt(condStmt);
+        insts.add(gotoStmt);
+        return insts;
+    }
 
+    public static List<Stmt> generateInit(Body body,String member){
+        List<Stmt> insts = new ArrayList<>();
+        SootClass sclass = body.getMethod().getDeclaringClass();
+        SootField sf = null;
+        for (SootField f : sclass.getFields()) {
+            if (f.getName().equals(member)) {
+                sf = f;
+                break;
+            }
         }
-
-        Local tmpString1 = CompileUtils.getLocal(body, "tmpString1");
-        if (tmpString1 == null) {
-            tmpString1 = Jimple.v().newLocal("tmpString1", RefType.v("java.lang.String"));
-            body.getLocals().add(tmpString1);
+        if(sf == null){
+            System.out.println("Field not found!!");
+            return insts;
         }
+        Local tmpMember = getLocal(body, "tmpMember_" + member, RefType.v(sf.getType().toString()));
 
-        Local tmpSpctx = CompileUtils.getLocal(body, "tmpSpctx");
-        if (tmpSpctx == null) {
-            tmpSpctx = Jimple.v().newLocal("tmpSpctx",
-                    RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext"));
-            body.getLocals().add(tmpSpctx);
-        }  
-
-        // SootClass spanClass = Scene.v().getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span");
-        // for(SootMethod spanm : spanClass.getMethods()){
-        //     System.out.println(spanm);
-        // }
-
-        SootMethod getSpanMethod = Scene.v()
-                .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
-                .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext getSpanContext()");
-        AssignStmt astmt1 = Jimple.v().newAssignStmt(tmpSpctx,
-                Jimple.v().newInterfaceInvokeExpr(tpLocal, getSpanMethod.makeRef()));
+        
+        AssignStmt astmt1 = Jimple.v().newAssignStmt(tmpMember, Jimple.v().newNewExpr(RefType.v(sf.getType().toString())));
         insts.add(astmt1);
 
-        SootMethod getTidMethod = Scene.v()
-                .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext")
-                .getMethod("java.lang.String getTraceId()");
-        AssignStmt astmt2 = Jimple.v().newAssignStmt(tmpString1,
-                Jimple.v().newInterfaceInvokeExpr(tmpSpctx, getTidMethod.makeRef()));
+        
+        //This is now hardcoded!
+        SootMethod mapInit = getMethod("java.util.HashMap", "void <init>()");
+        InvokeStmt istmt = Jimple.v().newInvokeStmt(Jimple.v().newSpecialInvokeExpr(tmpMember, mapInit.makeRef()));
+        insts.add(istmt);
+
+        AssignStmt astmt2 = Jimple.v().newAssignStmt(Jimple.v().newInstanceFieldRef(body.getThisLocal(), sf.makeRef()), tmpMember);
         insts.add(astmt2);
 
-        SootClass sclass = LumosAgent.classMap.get(order.getType().toString());
+        // List<Stmt> printStmts = generateTPStmts(body, tmpMember, Collections.emptyList(), true, null, "INIT");
+        // insts.addAll(printStmts);
+        return insts;
+    }
+
+
+    public static List<Stmt> generateDBExtractStmts(Body body, Value obj, String field) {
+        List<Stmt> insts = new ArrayList<>();
+        Local tmpMap = getLocal(body, "tmpMap", RefType.v("java.util.HashMap"));
+
+        SootClass sclass = LumosAgent.classMap.get(obj.getType().toString());
         SootField sf = null;
         for (SootField f : sclass.getFields()) {
             if (f.getName().contains("LumosContext")) {
@@ -131,51 +149,115 @@ public class CompileUtils {
             }
         }
         if(sf != null){
-            AssignStmt astmt3 = Jimple.v().newAssignStmt(Jimple.v().newInstanceFieldRef(order, sf.makeRef()), tmpString1);
+            AssignStmt astmt1 = Jimple.v().newAssignStmt(tmpMap, Jimple.v().newInstanceFieldRef(obj, sf.makeRef()));
+            insts.add(astmt1);
+
+            Local tmpContextObj = getLocal(body, "tmpContextObj_"+field, RefType.v("java.lang.Object"));
+            SootMethod getMethod = getMethod("java.util.HashMap", "java.lang.Object get(java.lang.Object)");
+            AssignStmt astmt2 = Jimple.v().newAssignStmt(tmpContextObj, Jimple.v().newVirtualInvokeExpr(tmpMap, 
+                getMethod.makeRef(), StringConstant.v(field)));
+            insts.add(astmt2);
+        }
+        return insts;
+    }
+
+    public static List<Stmt> generateDBInjectStmts(Body body, Value obj, String field) {
+        List<Stmt> insts = new ArrayList<>();
+        Local spanLocal = findLocal(body, "spanLocal");
+        PatchingChain<Unit> units = body.getUnits();
+        if (spanLocal == null) {
+            spanLocal = getLocal(body, "spanLocal", RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
+            SootMethod currMethod = Scene.v()
+                    .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
+                    .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
+            units.insertBefore(
+                    Jimple.v().newAssignStmt(spanLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
+                    ((JimpleBody) body).getFirstNonIdentityStmt());
+
+        }
+
+        Local tmpString1 = getLocal(body, "tmpString1", RefType.v("java.lang.String"));
+
+        Local tmpSpctx = getLocal(body, "tmpSpctx", RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext"));
+       
+        Local tmpMap = CompileUtils.getLocal(body, "tmpMap", RefType.v("java.util.HashMap"));
+        // SootClass spanClass = Scene.v().getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span");
+        // for(SootMethod spanm : spanClass.getMethods()){
+        //     System.out.println(spanm);
+        // }
+
+        SootMethod getSpanMethod = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+                "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext getSpanContext()");
+        AssignStmt astmt1 = Jimple.v().newAssignStmt(tmpSpctx,
+                Jimple.v().newInterfaceInvokeExpr(spanLocal, getSpanMethod.makeRef()));
+        insts.add(astmt1);
+
+        SootMethod getTidMethod = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
+                "java.lang.String getTraceId()");
+        AssignStmt astmt2 = Jimple.v().newAssignStmt(tmpString1,
+                Jimple.v().newInterfaceInvokeExpr(tmpSpctx, getTidMethod.makeRef()));
+        insts.add(astmt2);
+
+        SootClass sclass = LumosAgent.classMap.get(obj.getType().toString());
+        SootField sf = null;
+        for (SootField f : sclass.getFields()) {
+            if (f.getName().contains("LumosContext")) {
+                sf = f;
+                break;
+            }
+        }
+        if(sf != null){
+            AssignStmt astmt3 = Jimple.v().newAssignStmt(tmpMap, Jimple.v().newInstanceFieldRef(obj, sf.makeRef()));
             insts.add(astmt3);
+            // for(SootMethod sm: Scene.v().getSootClass("java.util.HashMap").getMethods()){
+            //         System.out.println(sm);
+            //     }
+            SootMethod mapSet = getMethod("java.util.HashMap",
+                "java.lang.Object put(java.lang.Object,java.lang.Object)");
+            // if(mapSet == null){
+            //     for(SootMethod sm: Scene.v().getSootClass("java.util.HashMap").getMethods()){
+            //         System.out.println(sm);
+            //     }
+            // }
+            InvokeStmt setStmt = Jimple.v().newInvokeStmt(Jimple.v().newVirtualInvokeExpr(tmpMap, mapSet.makeRef(), 
+                StringConstant.v(field), tmpString1));
+            insts.add(setStmt);
+
+            // List<Stmt> printStmts = generateTPStmts(body, tmpMap, Collections.emptyList(), true, null, "DEADBEAF");
+            // insts.addAll(printStmts);
         }
         else{
             System.out.println("[Lumos] Failed: LumosContext not found");
         }
+        for(Stmt stmt: insts){
+            System.out.println(stmt);
+        }
         return insts;
     }
     public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori, String name) {
-        Local tpLocal = getLocal(body, "tpLocal");
+        Local tpLocal = findLocal(body, "tpLocal");
         PatchingChain<Unit> units = body.getUnits();
         if (tpLocal == null) {
             // tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("java.io.PrintStream"));
             if (isPrint) {
-                tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("java.io.PrintStream"));
-                body.getLocals().add(tpLocal);
+                tpLocal = getLocal(body, "tpLocal", RefType.v("java.io.PrintStream"));
                 units.insertBefore(Jimple.v().newAssignStmt(
                         tpLocal, Jimple.v().newStaticFieldRef(
-                                Scene.v().getField("<java.lang.System: java.io.PrintStreamout>").makeRef())),
+                                Scene.v().getField("<java.lang.System: java.io.PrintStream out>").makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             } else {
-                tpLocal = Jimple.v().newLocal("tpLocal",
-                        RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
-                body.getLocals().add(tpLocal);
-                SootMethod currMethod = Scene.v()
-                        .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
-                        .getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
+                tpLocal = getLocal(body, "tpLocal", RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
+                SootMethod currMethod = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+                        "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
                 units.insertBefore(
                         Jimple.v().newAssignStmt(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             }
         }
 
-        Local tmpString1 = getLocal(body, "tmpString1");
-        if (tmpString1 == null) {
-            tmpString1 = Jimple.v().newLocal("tmpString1", RefType.v("java.lang.String"));
-            body.getLocals().add(tmpString1);
-            // body.validate();
-        }
-        Local tmpString2 = getLocal(body, "tmpString2");
-        if (tmpString2 == null) {
-            tmpString2 = Jimple.v().newLocal("tmpString2", RefType.v("java.lang.String"));
-            body.getLocals().add(tmpString2);
-            // body.validate();
-        }
+        Local tmpString1 = getLocal(body, "tmpString1", RefType.v("java.lang.String"));
+        Local tmpString2 = getLocal(body, "tmpString2", RefType.v("java.lang.String"));
+        
         List<Stmt> stlist = new ArrayList<>();
 
         Value val = null;
@@ -195,11 +277,11 @@ public class CompileUtils {
                 val = tmp;
             } else {
                 // App.p(baseval instanceof Constant);
-                val = getLocal(body, baseval);
+                val = findLocal(body, baseval);
             }
         } else {
             // App.p(baseval);
-            Value curr = getLocal(body, baseval);
+            Value curr = findLocal(body, baseval);
             List<Local> locallist = new ArrayList<>();
             
             for (String ref : suffix) {
@@ -270,24 +352,20 @@ public class CompileUtils {
         SootMethod toStringMethod = getValueOfMethod(val);
         stmt = Jimple.v().newAssignStmt(tmpString2, Jimple.v().newStaticInvokeExpr(toStringMethod.makeRef(), val));
         stlist.add(stmt);
-        SootMethod concatMethod = Scene.v().getSootClass("java.lang.String")
-                .getMethod("java.lang.String concat(java.lang.String)");
+        SootMethod concatMethod = getMethod("java.lang.String", "java.lang.String concat(java.lang.String)");
         stmt = Jimple.v().newAssignStmt(tmpString1, Jimple.v().newVirtualInvokeExpr(tmpString1,
                 concatMethod.makeRef(), tmpString2));
         stlist.add(stmt);
 
         if (isPrint) {
-            SootMethod toCall = Scene.v().getSootClass("java.io.PrintStream")
-                    .getMethod("void println(java.lang.String)");
+            SootMethod toCall = getMethod("java.io.PrintStream", "void println(java.lang.String)");
             InvokeStmt printStmt = Jimple.v()
                     .newInvokeStmt(Jimple.v().newVirtualInvokeExpr(tpLocal, toCall.makeRef(),
                             tmpString1));
             stlist.add(printStmt);
         } else {
-            SootMethod toCall = Scene.v()
-                    .getSootClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span")
-                    .getMethod(
-                            "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span addEvent(java.lang.String)");
+            SootMethod toCall = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+                   "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span addEvent(java.lang.String)");
             InvokeStmt eventStmt = Jimple.v()
                     .newInvokeStmt(Jimple.v().newInterfaceInvokeExpr(tpLocal, toCall.makeRef(), tmpString1));
             stlist.add(eventStmt);
@@ -295,7 +373,18 @@ public class CompileUtils {
         return stlist;
     }
 
-    public static Local getLocal(Body b, String vname) {
+    public static SootField findField(SootClass sclass, String fieldName){
+        SootField sf = null;
+        for (SootField f : sclass.getFields()) {
+            if (f.getName().contains(fieldName)) {
+                sf = f;
+                break;
+            }
+        }
+        return sf;
+    }
+
+    public static Local findLocal(Body b, String vname) {
         for (Local l : b.getLocals()) {
             if (l.getName().equals(vname)) {
                 return l;
@@ -312,6 +401,15 @@ public class CompileUtils {
             }
         }
         return null;
+    }
+
+    public static Local getLocal(Body body, String name, Type type){
+        Local local = findLocal(body, name);
+        if(local == null){
+            local = Jimple.v().newLocal(name, type);
+            body.getLocals().add(local);
+        }
+        return local;
     }
 
     // public static Stmt findStmt(Body b, String str) {
@@ -347,7 +445,7 @@ public class CompileUtils {
 
     }
 
-    public static Local getLocal(Body b, Value v) {
+    public static Local findLocal(Body b, Value v) {
         for (Local l : b.getLocals()) {
             if (l.getName().equals(((Local) v).getName())) {
                 return l;
