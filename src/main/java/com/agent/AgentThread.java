@@ -68,8 +68,8 @@ public class AgentThread implements Runnable, MessageHandler {
     public static final String CLASSNAME = "travel.service.TravelServiceImpl";
     public static final String METHODNAME = "query";
     public static final String TESTTP = "io.opentelemetry.api.trace.Span.current().addEvent(\"[LUMOS] HELLO!!!!!!!!\");";
-
     public static final int TESTLINE = 158;
+
 
     public AgentThread(Instrumentation inst) {
         this.inst = inst;
@@ -320,7 +320,7 @@ public class AgentThread implements Runnable, MessageHandler {
         //Connect to websocket controller server
         connect("ws://lumos:8765");
 
-        while(!LumosAgent.playGroundFlag);
+        //while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
         if(sname.contains("ts-order-service")){
         //   playground(5);
