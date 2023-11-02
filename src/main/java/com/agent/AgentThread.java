@@ -323,7 +323,7 @@ public class AgentThread implements Runnable, MessageHandler {
         while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
         if(sname.contains("ts-order-service")){
-           playground(5);
+        //   playground(5);
         }
          /*
          * 
@@ -367,7 +367,9 @@ public class AgentThread implements Runnable, MessageHandler {
          * }
          **/
         while (true) {
-
+	   try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {}
         }
     }
 }
