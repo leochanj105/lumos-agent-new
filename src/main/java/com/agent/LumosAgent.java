@@ -82,9 +82,11 @@ public class LumosAgent {
     public static boolean ORMContextOn = true;
 
     public static boolean checkORMClass(String clsname){
-	return (clsname.endsWith("domain.Order") || clsname.endsWith("domain.LoginValue") ||
-	        clsname.endsWith("domain.AddMoney") || clsname.endsWith("domain.Payment") ||
-	        clsname.endsWith("domain.Account"));
+	return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") || 
+		clsname.endsWith("sso.domain.LoginValue") ||
+	        clsname.endsWith("com.trainticket.domain.AddMoney") || clsname.endsWith("inside_payment.domain.AddMoney") || 
+		clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment") ||
+	        clsname.endsWith("sso.domain.Account"));
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
