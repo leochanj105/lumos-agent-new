@@ -123,7 +123,7 @@ public class LumosAgent {
 
                         // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
                         addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
-                        
+                        /*
                         for(SootMethod method: sclass.getMethods()){
                             if(method.getName().contains("<init>")){
                                 Body b = findBodyNoClone(method.toString());
@@ -139,6 +139,7 @@ public class LumosAgent {
                                 }
                             }
                         }
+			*/
                         byte[] cbuffer = CompileUtils.compileClass(sclass);
                         
                         System.out.println("added to " + className);
