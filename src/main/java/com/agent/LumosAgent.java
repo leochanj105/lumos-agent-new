@@ -79,7 +79,14 @@ public class LumosAgent {
     // public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
     // public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
-    public static boolean ORMContextOn = false;
+    public static boolean ORMContextOn = true;
+
+    public static boolean checkORMClass(String clsname){
+	return (clsname.endsWith("domain.Order") || clsname.endsWith("domain.LoginValue") ||
+	        clsname.endsWith("domain.AddMoney") || clsname.endsWith("domain.Payment") ||
+	        clsname.endsWith("domain.Account"));
+    }
+
     public static void premain(String agentArgs, Instrumentation inst) {
 
         // ClassPool classPool = ClassPool.getDefault();
@@ -107,20 +114,32 @@ public class LumosAgent {
                     if(!ORMContextOn){
 			return classFileBuffer;
 		    }
-                    String targetName = "order.domain.Order";
-                    String actualName = targetName.replace('.', File.separatorChar);
+                    //String targetName = "order.domain.Order";
+                    //String actualName = targetName.replace('.', File.separatorChar);
+		    
                     // if(className.contains("domain/Order")){
                     //     System.out.println(className + ", " + loader.getClass());
                     //     System.out.println(actualName);
                     // }
-                    
-                    if(className.equals(actualName)){
+		    
+		    String targetName = className.replace(File.separatorChar, '.');
+		    //if(targetName.contains("inside_payment") && targetName.contains("Order")){
+		    //    System.out.println(targetName);
+	            //}
+	            //String shortName = className.substring(className.lastIndexOf(File.separatorChar)+1);
+                    if(checkORMClass(targetName)){
+		    	//System.out.println("className: " + className);                    
+			System.out.println("target: " + targetName);
                         System.out.println("adding to " + className);
                         SootClass sclass = null;
-                        while(sclass == null){
-                            sclass = findClassExact(targetName);
-                        }
-
+                        //while(sclass == null){
+                        sclass = findClassExact(targetName);
+                        //}
+			if(sclass == null){
+		            System.out.println("Cannot find " + targetName);
+			    classMap.forEach((k,v) ->{ System.out.println("--" + k); });
+			}
+			
                         // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
                         addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
                         /*
