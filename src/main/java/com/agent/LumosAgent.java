@@ -80,6 +80,8 @@ public class LumosAgent {
 
     // public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
     public static boolean ORMContextOn = true;
+    public static boolean ORMInjectOn = true;
+    public static boolean TPInstOn = true;
 
     public static boolean checkORMClass(String clsname){
 	return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") || 
@@ -409,7 +411,9 @@ public class LumosAgent {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
                 List<Stmt> inserts = inst.addInsts();
-                CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+		if(inserts.size() > 0){
+                    CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+		}
             }
             sm.setActiveBody(b);
             scToCompile.add(sclass);

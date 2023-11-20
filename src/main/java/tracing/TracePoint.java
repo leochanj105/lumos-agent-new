@@ -2,8 +2,9 @@ package tracing;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
-
+import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
 
 import soot.Body;
@@ -165,6 +166,10 @@ public class TracePoint implements LumosInstrumentation {
 
     @Override
     public List<Stmt> addInsts() {
+	if(!LumosAgent.TPInstOn){
+	    List<Stmt> empty = new ArrayList<>();
+	    return empty;
+	}
         Body b = getBody();
         Stmt stmt = getActualStmt();
         Value base = CompileUtils.findLocal(stmt, getVal());

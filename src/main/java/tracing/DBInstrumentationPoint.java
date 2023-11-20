@@ -75,6 +75,9 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         List<Stmt> insts = new ArrayList<>();
         Stmt stmt = getActualStmt();
         String field = "TEST";
+	if(!LumosAgent.ORMInjectOn){
+	    return insts;
+	}
 
         if (stmt.containsInvokeExpr()) {
             InvokeExpr iexpr = stmt.getInvokeExpr();
