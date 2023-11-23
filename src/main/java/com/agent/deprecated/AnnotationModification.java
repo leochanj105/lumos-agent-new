@@ -1,4 +1,5 @@
-package com.agent;
+package com.agent.deprecated;
+
 import java.lang.instrument.Instrumentation;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
@@ -15,32 +16,32 @@ import javassist.bytecode.ConstPool;
 import com.google.common.collect.Lists;
 
 public class AnnotationModification implements DynamicModification {
-        public final String className, methodName, annotation;
-        // public final boolean before;
-        // public final int line_num;
+    public final String className, methodName, annotation;
+    // public final boolean before;
+    // public final int line_num;
 
-        public AnnotationModification(String className, String methodName, String annotation) {
-            this.className = className;
-            this.methodName = methodName;
-            this.annotation = annotation;
-            // this.instruction = instruction;
-            // this.line_num = line_num;
-            // this.before = before;
-        }
-        
-        @Override
-        public Collection<String> affects() {
-            return Lists.newArrayList(className);
-        }
-
-        @Override
-        public void apply(ClassPool pool) throws NotFoundException, CannotCompileException {
-            CtClass cls = pool.get(className);
-            // cls.getDeclaredMethod(methodName).insertAt(line_num, instruction);
-            ConstPool cpool = cls.getClassFile().getConstPool();
-            AnnotationsAttribute attr = new AnnotationsAttribute(cpool, AnnotationsAttribute.visibleTag);
-            Annotation annot = new Annotation(annotation, cpool);
-            attr.addAnnotation(annot);
-            cls.getDeclaredMethod(methodName).getMethodInfo().addAttribute(attr);
-        }
+    public AnnotationModification(String className, String methodName, String annotation) {
+        this.className = className;
+        this.methodName = methodName;
+        this.annotation = annotation;
+        // this.instruction = instruction;
+        // this.line_num = line_num;
+        // this.before = before;
     }
+
+    @Override
+    public Collection<String> affects() {
+        return Lists.newArrayList(className);
+    }
+
+    @Override
+    public void apply(ClassPool pool) throws NotFoundException, CannotCompileException {
+        CtClass cls = pool.get(className);
+        // cls.getDeclaredMethod(methodName).insertAt(line_num, instruction);
+        ConstPool cpool = cls.getClassFile().getConstPool();
+        AnnotationsAttribute attr = new AnnotationsAttribute(cpool, AnnotationsAttribute.visibleTag);
+        Annotation annot = new Annotation(annotation, cpool);
+        attr.addAnnotation(annot);
+        cls.getDeclaredMethod(methodName).getMethodInfo().addAttribute(attr);
+    }
+}
