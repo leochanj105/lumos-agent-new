@@ -188,7 +188,9 @@ public class AgentThread implements Runnable, MessageHandler {
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
         // LumosAgent.p(LumosAgent.forTest.length + "");
-        reload(cmap);
+        if (cmap.keySet().size() > 0) {
+            reload(cmap);
+        }
 
     }
 
