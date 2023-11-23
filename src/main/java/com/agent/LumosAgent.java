@@ -44,7 +44,6 @@ import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JReturnStmt;
 import soot.jimple.internal.JReturnVoidStmt;
 import soot.options.Options;
-import tracing.TracePoint;
 import tracing.*;
 
 /**
@@ -400,8 +399,6 @@ public class LumosAgent {
         // instrument();
     }
 
-    
-
     public static Map<String, byte[]> instrument() {
         Map<String, byte[]> cmap = new HashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
@@ -427,10 +424,25 @@ public class LumosAgent {
                 LumosInstrumentation inst = targetInsts.get(i);
                 List<Stmt> inserts = inst.addInsts();
                 if (inserts.size() > 0) {
-                    CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+                    if (!(inst instanceof TimestampedInstrumentation)) {
+                        CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+                    }
                 }
             }
-            sm.setActiveBody(b);
+
+            for (int i = 0; i < targetstmts.size(); i++) {
+                Stmt stmt = targetstmts.get(i);
+                LumosInstrumentation inst = targetInsts.get(i);
+                List<Stmt> inserts = inst.addInsts();
+                if (inserts.size() > 0) {
+                    if (inst instanceof TimestampedInstrumentation) {
+                        CompileUtils.insertAt(units, stmt, inserts.get(0), true);
+                        inserts.remove(0);
+                        CompileUtils.insertAt(units, stmt, inserts, false);
+                    }
+                }
+            }
+
             scToCompile.add(sclass);
         }
 

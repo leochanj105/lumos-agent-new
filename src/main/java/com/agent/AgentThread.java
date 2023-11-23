@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.lang.ClassLoader;
 import java.util.Vector;
 import java.net.URI;
+import java.sql.Time;
 
 import com.google.common.collect.Lists;
 // import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
@@ -33,7 +34,7 @@ import java.util.HashMap;
 import java.util.Collections;
 
 import tracing.DBInstrumentationPoint;
-
+import tracing.TimestampedInstrumentation;
 import soot.SootClass;
 import soot.SootField;
 import soot.SootFieldRef;
@@ -267,6 +268,9 @@ public class AgentThread implements Runnable, MessageHandler {
                     DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false,
                             1, "order.domain.Order");
                     LumosAgent.addTP(dbinst);
+                    TimestampedInstrumentation tinst = new TimestampedInstrumentation(sm2.toString(), stmt.toString(),
+                            9);
+                    LumosAgent.addTP(tinst);
                 }
             }
         }
