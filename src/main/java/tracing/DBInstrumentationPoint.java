@@ -30,12 +30,12 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
     public String stmt;
     // public List<Stmt> stmts;
     public Body body;
-    public int uid;
+    public String uid;
 
     public boolean isInject;
     public String objClassName;
 
-    public DBInstrumentationPoint(String sm, String stmt, boolean isInject, int uid, String objClassName) {
+    public DBInstrumentationPoint(String uid, String sm, String stmt, boolean isInject, String objClassName) {
         this.sm = sm;
         this.stmt = stmt;
         this.isInject = isInject;

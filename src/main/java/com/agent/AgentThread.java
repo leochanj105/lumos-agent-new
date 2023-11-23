@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Collections;
 
 import tracing.DBInstrumentationPoint;
+import tracing.LumosInstrumentation;
 import tracing.TimestampedInstrumentation;
 import soot.SootClass;
 import soot.SootField;
@@ -74,14 +75,7 @@ public class AgentThread implements Runnable, MessageHandler {
         this.agent = new JVMAgent(inst);
         this.manager = new DynamicManager(this.agent);
         tpmap = new HashMap<>();
-        // System.out.println("SNAME=" + sname);
-
-        // this.agent.loader = loader;
     }
-
-    // public static void getLoader(ClassLoader loader){
-    // AgentThread.loader = loader;
-    // }
 
     public void connect(String controllerAddr) {
         try {
@@ -94,40 +88,68 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void handleJSON(String jstr) {
-        // System.out.println("");
-        // System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
         boolean changed = false;
+        if (jstr.equals("SharedOn")) {
+            setORMInjectOn(true);
+            return;
+        } else if (jstr.equals("SharedOff")) {
+            setORMInjectOn(false);
+            return;
+        } else if (jstr.equals("TPOn")) {
+            setTPInstOn(true);
+            return;
+        } else if (jstr.equals("TPOff")) {
+            setTPInstOn(false);
+            return;
+        }
         JSONObject obj = new JSONObject(jstr);
         String x = obj.getString("type");
         if (x.equals("add")) {
             JSONArray arr = obj.getJSONArray("tps");
-            // System.out.println("??? " + arr.length());
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
-                // System.out.println(i+": " + tp);
                 String id = tp.getString("id");
                 String tptype = tp.getString("tptype");
                 String method = tp.getString("method");
-
+                String stmt = tp.getString("stmt");
+                int line = tp.getInt("line");
+                LumosInstrumentation toadd = null;
                 if (tptype.equals("code")) {
-                    String stmt = tp.getString("stmt");
-                    int line = tp.getInt("line");
                     String value = tp.getString("value");
                     List<String> suffix = new ArrayList<>();
                     JSONArray suffixarray = tp.getJSONArray("suffix");
-                    // String suffixstr = tp.getString("suffix");
-                    // System.out.println("suffix: "+ suffixarray +", " + suffixarray.length());
-
                     for (int j = 0; j < suffixarray.length(); j++) {
                         suffix.add(suffixarray.getString(j));
                     }
-                    // System.out.println("reached here 2");
-                    TracePoint actualtp = new TracePoint(id, method, stmt, line, value, suffix);
-                    boolean result = LumosAgent.addTP(actualtp);
+                    toadd = new TracePoint(id, method, stmt, line, value, suffix);
+                } else if (tptype.equals("soread")) {
+                    String sotype = tp.getString("sotype");
+                    String soclass = tp.getString("soclass");
+                    if (sotype.contains("Repository")) {
+                        toadd = new DBInstrumentationPoint(id, method, stmt, false, soclass);
+                    } else if (sotype.contains("ValueOperations")) {
+                        toadd = new TimestampedInstrumentation(id, method, stmt);
+                    } else {
+                        LumosAgent.p("[WARN] SO type not supported!!!");
+                    }
+                } else if (tptype.equals("sowrite")) {
+                    String sotype = tp.getString("sotype");
+                    if (sotype.contains("Repository")) {
+                        toadd = new DBInstrumentationPoint(id, method, stmt, true, "");
+                    } else if (sotype.contains("ValueOperations")) {
+                        toadd = new TimestampedInstrumentation(id, method, stmt);
+                    } else {
+                        LumosAgent.p("[WARN] SO type not supported!!!");
+                    }
+
+                } else {
+                    LumosAgent.p("[WARN] TP type not supported!!!!");
+                }
+                if (toadd != null) {
+                    boolean result = LumosAgent.addTP(toadd);
                     if (result) {
                         changed = true;
                     }
-                    // System.out.println("?????????? " + actualtp);
                 }
             }
 
@@ -171,11 +193,13 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void setORMInjectOn(boolean b) {
+        LumosAgent.p("ORM: " + b);
         LumosAgent.SOInjectOn = b;
         refreshTPs();
     }
 
     public void setTPInstOn(boolean b) {
+        LumosAgent.p("TP: " + b);
         LumosAgent.TPInstOn = b;
         refreshTPs();
     }
@@ -249,7 +273,8 @@ public class AgentThread implements Runnable, MessageHandler {
                 if (stmt.getInvokeExpr().getMethod().toString().contains("save")) {
                     Value objSaved = stmt.getInvokeExpr().getArgs().get(0);
                     System.out.println(stmt.getJavaSourceStartLineNumber() + ":" + stmt + ", " + objSaved);
-                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString(), true, 1,
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint("7", sm.toString(), stmt.toString(),
+                            true,
                             "order.domain.Order");
                     LumosAgent.addTP(dbinst);
                 }
@@ -265,11 +290,11 @@ public class AgentThread implements Runnable, MessageHandler {
                 if (stmt.getInvokeExpr().getMethod().toString().contains("findByAccountId")) {
                     // findStmt = stmt;
                     // break;
-                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false,
-                            1, "order.domain.Order");
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint("1", sm2.toString(), stmt.toString(),
+                            false, "order.domain.Order");
                     LumosAgent.addTP(dbinst);
-                    TimestampedInstrumentation tinst = new TimestampedInstrumentation(sm2.toString(), stmt.toString(),
-                            9);
+                    TimestampedInstrumentation tinst = new TimestampedInstrumentation("9", sm2.toString(),
+                            stmt.toString());
                     LumosAgent.addTP(tinst);
                 }
             }
@@ -299,7 +324,7 @@ public class AgentThread implements Runnable, MessageHandler {
         // while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
         if (sname.contains("ts-order-service")) {
-            playground(5);
+            // playground(5);
         }
         /*
          * 

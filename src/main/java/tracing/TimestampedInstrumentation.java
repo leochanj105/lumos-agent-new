@@ -20,7 +20,7 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
     public String sm;
     public String stmt;
     public Body body;
-    public int uid;
+    public String uid;
 
     @Override
     public int hashCode() {
@@ -53,7 +53,7 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
         return true;
     }
 
-    public TimestampedInstrumentation(String sm, String stmt, int uid) {
+    public TimestampedInstrumentation(String uid, String sm, String stmt) {
         this.sm = sm;
         this.stmt = stmt;
         this.uid = uid;
