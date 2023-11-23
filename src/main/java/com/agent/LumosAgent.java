@@ -422,9 +422,9 @@ public class LumosAgent {
             for (int i = 0; i < targetstmts.size(); i++) {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
-                List<Stmt> inserts = inst.addInsts();
-                if (inserts.size() > 0) {
-                    if (!(inst instanceof TimestampedInstrumentation)) {
+                if (!(inst instanceof TimestampedInstrumentation)) {
+                    List<Stmt> inserts = inst.addInsts();
+                    if (inserts.size() > 0) {
                         CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
                     }
                 }
@@ -433,9 +433,9 @@ public class LumosAgent {
             for (int i = 0; i < targetstmts.size(); i++) {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
-                List<Stmt> inserts = inst.addInsts();
-                if (inserts.size() > 0) {
-                    if (inst instanceof TimestampedInstrumentation) {
+                if (inst instanceof TimestampedInstrumentation) {
+                    List<Stmt> inserts = inst.addInsts();
+                    if (inserts.size() > 0) {
                         CompileUtils.insertAt(units, stmt, inserts.get(0), true);
                         inserts.remove(0);
                         CompileUtils.insertAt(units, stmt, inserts, false);
