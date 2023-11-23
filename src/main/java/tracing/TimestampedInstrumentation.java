@@ -62,7 +62,7 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
     @Override
     public List<Stmt> addInsts() {
         List<Stmt> insts = new ArrayList<>();
-        Stmt stmt = getActualStmt();
+        // Stmt stmt = getActualStmt();
         if (!LumosAgent.SOInjectOn) {
             return insts;
         }
@@ -81,7 +81,7 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
         List<Stmt> traceStmts2 = CompileUtils.generateTPStmts(body, tp2, Collections.emptyList(),
                 false, null, uid + "_1");
         insts.addAll(traceStmts2);
-        return null;
+        return insts;
     }
 
     @Override
