@@ -70,25 +70,29 @@ public class LumosAgent {
 
     // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
     // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
-    
+
     public static byte[] forTest;
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
     public static String jarpath = "/app/opentelemetry-javaagent.jar";
     public static String cpath = "/app/classes";
-    // public static String jarpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
+    // public static String jarpath =
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
-    // public static String cpath = "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    // public static String cpath =
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
     public static boolean ORMContextOn = true;
     public static boolean ORMInjectOn = true;
     public static boolean TPInstOn = true;
 
-    public static boolean checkORMClass(String clsname){
-	return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") || 
-		clsname.endsWith("sso.domain.LoginValue") ||
-	        clsname.endsWith("com.trainticket.domain.AddMoney") || clsname.endsWith("inside_payment.domain.AddMoney") || 
-		clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment") ||
-	        clsname.endsWith("sso.domain.Account"));
+    public static boolean checkORMClass(String clsname) {
+        return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") ||
+                clsname.endsWith("sso.domain.LoginValue") ||
+                clsname.endsWith("com.trainticket.domain.AddMoney")
+                || clsname.endsWith("inside_payment.domain.AddMoney") ||
+                clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment")
+                ||
+                clsname.endsWith("sso.domain.Account"));
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -109,62 +113,66 @@ public class LumosAgent {
                     byte[] classFileBuffer) {
 
                 if (loader != null
-                    && loader.getClass().getName().contains("LaunchedURLClassLoader")
-                ) {
-                    if(LumosAgent.cloader == null){
+                        && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                    if (LumosAgent.cloader == null) {
                         System.out.println("Hooked " + loader);
                         LumosAgent.cloader = loader;
                     }
-                    if(!ORMContextOn){
-			return classFileBuffer;
-		    }
-                    //String targetName = "order.domain.Order";
-                    //String actualName = targetName.replace('.', File.separatorChar);
-		    
+                    if (!ORMContextOn) {
+                        return classFileBuffer;
+                    }
+                    // String targetName = "order.domain.Order";
+                    // String actualName = targetName.replace('.', File.separatorChar);
+
                     // if(className.contains("domain/Order")){
-                    //     System.out.println(className + ", " + loader.getClass());
-                    //     System.out.println(actualName);
+                    // System.out.println(className + ", " + loader.getClass());
+                    // System.out.println(actualName);
                     // }
-		    
-		    String targetName = className.replace(File.separatorChar, '.');
-		    //if(targetName.contains("inside_payment") && targetName.contains("Order")){
-		    //    System.out.println(targetName);
-	            //}
-	            //String shortName = className.substring(className.lastIndexOf(File.separatorChar)+1);
-                    if(checkORMClass(targetName)){
-		    	//System.out.println("className: " + className);                    
-			System.out.println("target: " + targetName);
+
+                    String targetName = className.replace(File.separatorChar, '.');
+                    // if(targetName.contains("inside_payment") && targetName.contains("Order")){
+                    // System.out.println(targetName);
+                    // }
+                    // String shortName =
+                    // className.substring(className.lastIndexOf(File.separatorChar)+1);
+                    if (checkORMClass(targetName)) {
+                        // System.out.println("className: " + className);
+                        System.out.println("target: " + targetName);
                         System.out.println("adding to " + className);
                         SootClass sclass = null;
-                        //while(sclass == null){
+                        // while(sclass == null){
                         sclass = findClassExact(targetName);
-                        //}
-			if(sclass == null){
-		            System.out.println("Cannot find " + targetName);
-			    classMap.forEach((k,v) ->{ System.out.println("--" + k); });
-			}
-			
-                        // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
-                        addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
-                        /*
-                        for(SootMethod method: sclass.getMethods()){
-                            if(method.getName().contains("<init>")){
-                                Body b = findBodyNoClone(method.toString());
-                                System.out.println(method);
-                                if(b !=null){
-                                    List<Stmt> initStmts = CompileUtils.generateInit(b, "LumosContext");
-                                    CompileUtils.insertAt(b.getUnits(), ((JimpleBody) b).getFirstNonIdentityStmt(), initStmts, true);
-
-                                    initStmts.forEach(stmt->{System.out.println(stmt);});
-                                    
-                                    System.out.println("Inserted for " + method);
-                                    method.setActiveBody(b);
-                                }
-                            }
+                        // }
+                        if (sclass == null) {
+                            System.out.println("Cannot find " + targetName);
+                            classMap.forEach((k, v) -> {
+                                System.out.println("--" + k);
+                            });
                         }
-			*/
+
+                        // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
+                        // addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
+                        addFieldToClass(sclass, "java.lang.String", "LumosContext");
+                        /*
+                         * for(SootMethod method: sclass.getMethods()){
+                         * if(method.getName().contains("<init>")){
+                         * Body b = findBodyNoClone(method.toString());
+                         * System.out.println(method);
+                         * if(b !=null){
+                         * List<Stmt> initStmts = CompileUtils.generateInit(b, "LumosContext");
+                         * CompileUtils.insertAt(b.getUnits(), ((JimpleBody)
+                         * b).getFirstNonIdentityStmt(), initStmts, true);
+                         * 
+                         * initStmts.forEach(stmt->{System.out.println(stmt);});
+                         * 
+                         * System.out.println("Inserted for " + method);
+                         * method.setActiveBody(b);
+                         * }
+                         * }
+                         * }
+                         */
                         byte[] cbuffer = CompileUtils.compileClass(sclass);
-                        
+
                         System.out.println("added to " + className);
                         playGroundFlag = true;
                         return cbuffer;
@@ -175,7 +183,7 @@ public class LumosAgent {
             }
         });
         // play();
-        
+
         Thread thread = new Thread(new AgentThread(inst));
         thread.start();
     }
@@ -185,34 +193,38 @@ public class LumosAgent {
         thread.start();
     }
 
-    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname){
+    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname) {
         sclass.addField(Scene.v().makeSootField(fieldname, RefType.v(type), soot.Modifier.PUBLIC));
         byte[] bytecode = CompileUtils.compileClass(sclass);
         return bytecode;
     }
 
-    public static Map<String, byte[]> addField(String classname, String type, String fieldname){
+    public static Map<String, byte[]> addField(String classname, String type, String fieldname) {
         Map<String, byte[]> cmap = new HashMap<>();
         SootClass sclass = findClass(classname);
         cmap.put(sclass.toString(), addFieldToClass(sclass, type, fieldname));
         return cmap;
     }
 
+    public static String repoToObjClass(String repoName) {
+        return  "";
+    }
+
     public static boolean addTP(LumosInstrumentation tp) {
-        if(allTPs.contains(tp)){
+        if (allTPs.contains(tp)) {
             return false;
         }
         allTPs.add(tp);
         if (!methodTPMap.containsKey(tp.getSm())) {
             methodTPMap.put(tp.getSm(), new HashSet<>());
         }
-        
+
         methodTPMap.get(tp.getSm()).add(tp);
         return true;
     }
 
     public static boolean removeTP(LumosInstrumentation tp) {
-        if(!allTPs.contains(tp)){
+        if (!allTPs.contains(tp)) {
             return false;
         }
         allTPs.remove(tp);
@@ -340,16 +352,16 @@ public class LumosAgent {
         return null;
     }
 
-    public static SootMethod findMethod(String ...names) {
+    public static SootMethod findMethod(String... names) {
         for (String s : methodMap.keySet()) {
             boolean match = true;
-            for(String name: names){
+            for (String name : names) {
                 if (!s.contains(name)) {
                     match = false;
                     break;
                 }
             }
-            if(match){
+            if (match) {
                 return methodMap.get(s);
             }
         }
@@ -382,7 +394,7 @@ public class LumosAgent {
         String valueName = "$stack29";
         String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
 
-        TracePoint tp = new TracePoint("11", methodName, stmtString,103, valueName);
+        TracePoint tp = new TracePoint("11", methodName, stmtString, 103, valueName);
         addTP(tp);
         instrument();
     }
@@ -411,14 +423,13 @@ public class LumosAgent {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
                 List<Stmt> inserts = inst.addInsts();
-		if(inserts.size() > 0){
+                if (inserts.size() > 0) {
                     CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
-		}
+                }
             }
             sm.setActiveBody(b);
             scToCompile.add(sclass);
         }
-
 
         for (SootClass sclass : scToCompile) {
             byte[] bytecode = CompileUtils.compileClass(sclass);
@@ -429,19 +440,19 @@ public class LumosAgent {
             // String dirname = "AAA";
             // File outputDir = new File(dirname);
             // if (!outputDir.exists()) {
-            //     outputDir.mkdir();
+            // outputDir.mkdir();
             // }
             // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
             // FileOutputStream classout;
             // try {
-            //     classout = new FileOutputStream(file2);
-            //     classout.write(bytecode);
-            //     classout.close();
+            // classout = new FileOutputStream(file2);
+            // classout.write(bytecode);
+            // classout.close();
             // } catch (FileNotFoundException e) {
-            //     e.printStackTrace();
+            // e.printStackTrace();
             // } catch (IOException e) {
-            //     // TODO Auto-generated catch block
-            //     e.printStackTrace();
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
             // }
         }
         return cmap;
@@ -454,5 +465,4 @@ public class LumosAgent {
 
     }
 
-    
 }

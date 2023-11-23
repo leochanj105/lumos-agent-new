@@ -50,8 +50,6 @@ import soot.jimple.Constant;
 import soot.jimple.InvokeStmt;
 import soot.jimple.Jimple;
 
-
-
 public class AgentThread implements Runnable, MessageHandler {
     public Instrumentation inst;
     public JVMAgent agent;
@@ -69,7 +67,6 @@ public class AgentThread implements Runnable, MessageHandler {
     public static final String METHODNAME = "query";
     public static final String TESTTP = "io.opentelemetry.api.trace.Span.current().addEvent(\"[LUMOS] HELLO!!!!!!!!\");";
     public static final int TESTLINE = 158;
-
 
     public AgentThread(Instrumentation inst) {
         this.inst = inst;
@@ -99,7 +96,7 @@ public class AgentThread implements Runnable, MessageHandler {
         // System.out.println("");
         // System.out.println("!!!!!!!!!!!!!!!!!!!\n" + jstr);
         boolean changed = false;
-        JSONObject obj = new JSONObject(jstr);  
+        JSONObject obj = new JSONObject(jstr);
         String x = obj.getString("type");
         if (x.equals("add")) {
             JSONArray arr = obj.getJSONArray("tps");
@@ -110,7 +107,7 @@ public class AgentThread implements Runnable, MessageHandler {
                 String id = tp.getString("id");
                 String tptype = tp.getString("tptype");
                 String method = tp.getString("method");
-                
+
                 if (tptype.equals("code")) {
                     String stmt = tp.getString("stmt");
                     int line = tp.getInt("line");
@@ -126,11 +123,11 @@ public class AgentThread implements Runnable, MessageHandler {
                     // System.out.println("reached here 2");
                     TracePoint actualtp = new TracePoint(id, method, stmt, line, value, suffix);
                     boolean result = LumosAgent.addTP(actualtp);
-                    if(result){
+                    if (result) {
                         changed = true;
                     }
-                    // System.out.println("?????????? " + actualtp);    
-                } 
+                    // System.out.println("?????????? " + actualtp);
+                }
             }
 
         } else if (x.equals("remove")) {
@@ -139,43 +136,40 @@ public class AgentThread implements Runnable, MessageHandler {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject tp = arr.getJSONObject(i);
                 String id = tp.getString("id");
-                
+
             }
-        } 
-        else if (x.equals("field")){
+        } else if (x.equals("field")) {
             String classname = obj.getString("classname");
             String type = obj.getString("type");
             String fieldname = obj.getString("fieldname");
             addField(classname, type, fieldname);
             // changed = true;
-            
-        }
-        else {
+
+        } else {
             System.out.println("Not implemented!");
         }
-        if(changed){
+        if (changed) {
             refreshTPs();
         }
     }
 
-
-    public void addField(String classname, String type, String fieldname){
-        Map<String, byte[]> cmap=LumosAgent.addField(classname, type, fieldname);
+    public void addField(String classname, String type, String fieldname) {
+        Map<String, byte[]> cmap = LumosAgent.addField(classname, type, fieldname);
         System.out.println(cmap.keySet());
         reload(cmap);
     }
 
-    public void refreshTPs(){
+    public void refreshTPs() {
         System.out.println("[LUMOS] Instrumenting...");
-        Map<String, byte[]> cmap= LumosAgent.instrument();
+        Map<String, byte[]> cmap = LumosAgent.instrument();
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
         // LumosAgent.p(LumosAgent.forTest.length + "");
         reload(cmap);
-        
+
     }
 
-    public void reload(Map<String, byte[]> cmap){
+    public void reload(Map<String, byte[]> cmap) {
         try {
             this.agent.reload(cmap);
         } catch (UnmodifiableClassException e) {
@@ -189,10 +183,9 @@ public class AgentThread implements Runnable, MessageHandler {
         // System.out.println("Handling " + message);
         // if(message.equals("keepalive"))
         // return;
-        try{
+        try {
             handleJSON(message);
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         /*
@@ -217,19 +210,18 @@ public class AgentThread implements Runnable, MessageHandler {
          */
     }
 
-    public static void countDown(int seconds){
-        for(int i = 0; i < seconds; i++){
-            try{
+    public static void countDown(int seconds) {
+        for (int i = 0; i < seconds; i++) {
+            try {
                 Thread.sleep(1000);
-            }
-            catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             System.out.println("[LUMOS] Count " + (seconds - i));
         }
     }
 
-    public void playground(int seconds){
+    public void playground(int seconds) {
         // int seconds = 30;
         countDown(seconds);
         System.out.println("[LUMOS] Instrumenting...");
@@ -240,29 +232,15 @@ public class AgentThread implements Runnable, MessageHandler {
         Body b = LumosAgent.findBody(sm.toString());
         List<Stmt> saveStmts = new ArrayList<>();
         List<Stmt> savedObjs = new ArrayList<>();
-        for(Unit u : b.getUnits()){
+        for (Unit u : b.getUnits()) {
             Stmt stmt = (Stmt) u;
-            if(stmt.containsInvokeExpr()){
-                if(stmt.getInvokeExpr().getMethod().toString().contains("save")){
+            if (stmt.containsInvokeExpr()) {
+                if (stmt.getInvokeExpr().getMethod().toString().contains("save")) {
                     Value objSaved = stmt.getInvokeExpr().getArgs().get(0);
-                    System.out.println(stmt.getJavaSourceStartLineNumber() + ":" + stmt +", " + objSaved);
-                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString(), true);
+                    System.out.println(stmt.getJavaSourceStartLineNumber() + ":" + stmt + ", " + objSaved);
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm.toString(), stmt.toString(), true, 1,
+                            "order.domain.Order");
                     LumosAgent.addTP(dbinst);
-                    
-                    
-                    // SootClass oclass = LumosAgent.classMap.get("order.domain.Order");
-                    // SootField sf = null;
-                    // for (SootField f : oclass.getFields()) {
-                    //     if (f.getName().contains("LumosContext")) {
-                    //         sf = f;
-                    //         break;
-                    //     }
-                    // }
-                    // if (sf != null) {
-                    //     System.out.println(sf);
-                    // }
-                    // AssignStmt astmt = Jimple.v().newInstanceFieldRef();
-                    // saveStmts.add(stmt);
                 }
             }
         }
@@ -270,62 +248,46 @@ public class AgentThread implements Runnable, MessageHandler {
         SootMethod sm2 = LumosAgent.findMethod("queryOrders", "order.service.OrderServiceImpl");
         Body b2 = sm2.getActiveBody();
         Stmt findStmt = null;
-        for(Unit u : b2.getUnits()){
+        for (Unit u : b2.getUnits()) {
             Stmt stmt = (Stmt) u;
-            if(stmt.containsInvokeExpr()){
-                if(stmt.getInvokeExpr().getMethod().toString().contains("findByAccountId")){
-                    // findStmt = stmt; 
+            if (stmt.containsInvokeExpr()) {
+                if (stmt.getInvokeExpr().getMethod().toString().contains("findByAccountId")) {
+                    // findStmt = stmt;
                     // break;
-                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false);
+                    DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false,
+                            1, "order.domain.Order");
                     LumosAgent.addTP(dbinst);
                 }
             }
         }
         refreshTPs();
-        // Local objList = (Local)((AssignStmt) findStmt).getLeftOp();
-                    
-        // Local limit = CompileUtils.getLocal(b2, "loopLimit", IntType.v());
-        // SootMethod sizeMethod = CompileUtils.getMethod("java.util.ArrayList", "int size()");
-        // AssignStmt astmt = Jimple.v().newAssignStmt(limit, Jimple.v().newVirtualInvokeExpr(objList, sizeMethod.makeRef()));
-        // Local loopVar = CompileUtils.getLocal(b2, "loopVar", IntType.v());
-        // List<Stmt> loopStmts = CompileUtils.generateTPStmts(b2, loopVar, Collections.emptyList(), true, null, "LOOP");
-        // List<Stmt> actualLoop = CompileUtils.generateLoop(b2, limit, loopVar, (Stmt)b2.getUnits().getSuccOf(findStmt), loopStmts);
-        // System.out.println("---------");
-        // actualLoop.forEach(s ->{
-        //     System.out.println(s);
-        // });
-
-
-        
     }
-    
 
     @Override
     public void run() {
         // Wait Until we hooked the Spring classloader
         while (LumosAgent.cloader == null || !LumosAgent.analyzeReady)
             ;
-        
+
         // int seconds = 10;
         // for (int i = 0; i < seconds; i++) {
-        //     try {
-        //         Thread.sleep(1000);
-        //     } catch (Exception e) {
-        //         e.printStackTrace();
-        //     }
-        //     System.out.println("[LUMOS] Count " + (seconds - i));
+        // try {
+        // Thread.sleep(1000);
+        // } catch (Exception e) {
+        // e.printStackTrace();
         // }
-        
+        // System.out.println("[LUMOS] Count " + (seconds - i));
+        // }
 
-        //Connect to websocket controller server
+        // Connect to websocket controller server
         connect("ws://lumos:8765");
 
-        //while(!LumosAgent.playGroundFlag);
+        // while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
-        if(sname.contains("ts-order-service")){
-        //   playground(5);
+        if (sname.contains("ts-order-service")) {
+            // playground(5);
         }
-         /*
+        /*
          * 
          * 
          * //DynamicModification modifyMethod = new InstructionModification(CLASSNAME,
@@ -367,9 +329,10 @@ public class AgentThread implements Runnable, MessageHandler {
          * }
          **/
         while (true) {
-	   try {
+            try {
                 Thread.sleep(5000);
-            } catch (InterruptedException e) {}
+            } catch (InterruptedException e) {
+            }
         }
     }
 }
