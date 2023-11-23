@@ -422,27 +422,27 @@ public class LumosAgent {
             for (int i = 0; i < targetstmts.size(); i++) {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
-                // if (!(inst instanceof TimestampedInstrumentation)) {
-                    List<Stmt> inserts = inst.addInsts();
-                    if (inserts.size() > 0) {
-                        CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
-                    }
-                // }
+                if (!(inst instanceof TimestampedInstrumentation)) {
+                List<Stmt> inserts = inst.addInsts();
+                if (inserts.size() > 0) {
+                    CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+                }
+                }
             }
 
-            // for (int i = 0; i < targetstmts.size(); i++) {
-            // Stmt stmt = targetstmts.get(i);
-            // LumosInstrumentation inst = targetInsts.get(i);
-            // if (inst instanceof TimestampedInstrumentation) {
-            // List<Stmt> inserts = inst.addInsts();
-            // if (inserts.size() > 0) {
-            // CompileUtils.insertAt(units, stmt, inserts.get(0), true);
-            // inserts.remove(0);
-            // CompileUtils.insertAt(units, stmt, inserts, false);
-            // }
-            // }
-            // }
-
+            for (int i = 0; i < targetstmts.size(); i++) {
+                Stmt stmt = targetstmts.get(i);
+                LumosInstrumentation inst = targetInsts.get(i);
+                if (inst instanceof TimestampedInstrumentation) {
+                    List<Stmt> inserts = inst.addInsts();
+                    if (inserts.size() > 0) {
+                        CompileUtils.insertAt(units, stmt, inserts.get(0), true);
+                        inserts.remove(0);
+                        CompileUtils.insertAt(units, stmt, inserts, false);
+                    }
+                }
+            }
+            sm.setActiveBody(b);
             scToCompile.add(sclass);
         }
 
