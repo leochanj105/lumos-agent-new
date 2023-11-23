@@ -93,7 +93,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
 
                         // if (sf != null) {
                         // insts = CompileUtils.generateDBInjectStmts(body, order, field);
-                        insts = CompileUtils.generateDBInjectStmts(body, obj);
+                        insts = CompileUtils.generateDBInjectStmts(body, obj, uid + "");
                         // }
 
                     }

@@ -170,11 +170,11 @@ public class CompileUtils {
         return insts;
     }
 
-    public static List<Stmt> generateDBInjectStmts(Body body, Value obj) {
-        return generateDBInjectStmts(body, obj, null);
+    public static List<Stmt> generateDBInjectStmts(Body body, Value obj, String id) {
+        return generateDBInjectStmts(body, obj, id, null);
     }
 
-    public static List<Stmt> generateDBInjectStmts(Body body, Value obj, String field) {
+    public static List<Stmt> generateDBInjectStmts(Body body, Value obj, String id, String field) {
         List<Stmt> insts = new ArrayList<>();
         Local spanLocal = findLocal(body, "spanLocal");
         PatchingChain<Unit> units = body.getUnits();
@@ -213,7 +213,7 @@ public class CompileUtils {
                 Jimple.v().newInterfaceInvokeExpr(tmpSpctx, getTidMethod.makeRef()));
         insts.add(astmt2);
 
-        String id = "000";
+        // String id = "000";
 
         AssignStmt stmt3 = Jimple.v().newAssignStmt(tmpString2,
                 StringConstant.v("_" + id + "_000"));
