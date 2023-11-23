@@ -67,8 +67,8 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
             return insts;
         }
 
-        Local tp1 = CompileUtils.getLocal(body, "tp1", LongType.v());
-        Local tp2 = CompileUtils.getLocal(body, "tp2", LongType.v());
+        Local tp1 = CompileUtils.getLocal(body, "tpt1", LongType.v());
+        Local tp2 = CompileUtils.getLocal(body, "tpt2", LongType.v());
         SootMethod timeMethod = CompileUtils.getMethod("java.lang.System",
                 "long nanoTime()");
         AssignStmt stmt1 = Jimple.v().newAssignStmt(tp1, Jimple.v().newStaticInvokeExpr(timeMethod.makeRef()));
@@ -81,6 +81,10 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
         List<Stmt> traceStmts2 = CompileUtils.generateTPStmts(body, tp2, Collections.emptyList(),
                 false, null, uid + "_1");
         insts.addAll(traceStmts2);
+        System.out.println("---------");
+        insts.forEach(s -> {
+            System.out.println(s);
+        });
         return insts;
     }
 
