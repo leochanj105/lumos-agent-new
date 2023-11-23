@@ -78,8 +78,8 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
     public List<Stmt> addInsts() {
         List<Stmt> insts = new ArrayList<>();
         Stmt stmt = getActualStmt();
-        String field = "TEST";
-        if (!LumosAgent.ORMInjectOn) {
+        // String field = "TEST";
+        if (!LumosAgent.SOInjectOn) {
             return insts;
         }
 

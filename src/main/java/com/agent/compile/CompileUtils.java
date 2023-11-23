@@ -425,16 +425,6 @@ public class CompileUtils {
         return local;
     }
 
-    // public static Stmt findStmt(Body b, String str) {
-    // for (Unit u : b.getUnits()) {
-    // Stmt stmt = (Stmt) u;
-    // if (stmt.toString().equals(str)) {
-    // return stmt;
-    // }
-    // }
-    // return null;
-    // }
-
     public static Stmt searchStmt(Body b, String stmtStr, int linenum) {
 
         for (Unit unit : b.getUnits()) {

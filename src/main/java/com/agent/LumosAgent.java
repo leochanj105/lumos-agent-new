@@ -76,13 +76,13 @@ public class LumosAgent {
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
     public static String jarpath = "/app/opentelemetry-javaagent.jar";
     public static String cpath = "/app/classes";
-    // public static String jarpath =
+    // public static String jarpat
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
     // public static String cpath =
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
     public static boolean ORMContextOn = true;
-    public static boolean ORMInjectOn = true;
+    public static boolean SOInjectOn = true;
     public static boolean TPInstOn = true;
 
     public static boolean checkORMClass(String clsname) {
@@ -207,7 +207,7 @@ public class LumosAgent {
     }
 
     public static String repoToObjClass(String repoName) {
-        return  "";
+        return "";
     }
 
     public static boolean addTP(LumosInstrumentation tp) {
@@ -390,12 +390,23 @@ public class LumosAgent {
         setupSoot(cpath);
         analyzePath(cpath);
 
-        String methodName = "sendInsidePayment";
-        String valueName = "$stack29";
-        String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean: boolean booleanValue()>()";
+        // String methodName = "sendInsidePayment";
+        // String valueName = "$stack29";
+        // String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean:
+        // boolean booleanValue()>()";
 
-        TracePoint tp = new TracePoint("11", methodName, stmtString, 103, valueName);
-        addTP(tp);
+        // TracePoint tp = new TracePoint("11", methodName, stmtString, 103, valueName);
+        // addTP(tp);
+        // instrument();
+    }
+
+    public static void setORMInjectOn(boolean b) {
+        SOInjectOn = b;
+        instrument();
+    }
+
+    public static void setTPInstOn(boolean b) {
+        TPInstOn = b;
         instrument();
     }
 
