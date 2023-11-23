@@ -14,8 +14,10 @@ import soot.jimple.AssignStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Jimple;
+import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
+import soot.toolkits.graph.BriefUnitGraph;
 import soot.Local;
 import soot.RefType;
 import soot.IntType;
@@ -102,6 +104,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
                         AssignStmt findStmt = (AssignStmt) stmt;
 
                         Local obj = (Local) (findStmt).getLeftOp();
+                        insts.add(CompileUtils.generateNullCheckStmt(body, stmt, obj));
                         Local targetLocal = CompileUtils.getLocal(body, "targetLocal", RefType.v(this.objClassName));
 
                         String resType = findStmt.getLeftOp().getType().toString();
@@ -152,8 +155,12 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
     public List<Stmt> getExtractStmts(Local objLocal) {
 
         List<Stmt> extracStmts = new ArrayList<>();
+        Stmt stmt = getActualStmt();
         // Local tmpMap = CompileUtils.getLocal(body, "tmpMap",
         // RefType.v("java.util.HashMap"));
+
+        // extracStmts.add(CompileUtils.generateNullCheckStmt(body, stmt, objLocal));
+
         Local tmpMap = CompileUtils.getLocal(body, "ctx", RefType.v("java.lang.String"));
         SootField sf = CompileUtils.findField(((RefType) objLocal.getType()).getSootClass(),
                 "LumosContext");
@@ -174,7 +181,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         // Collections.emptyList(),
         // false, null, "WRITECONTEXT_" + field);
         List<Stmt> traceStmts = CompileUtils.generateTPStmts(body, tmpMap, Collections.emptyList(),
-                false, null, "" + uid);
+                false, stmt, uid);
         extracStmts.addAll(traceStmts);
         return extracStmts;
     }

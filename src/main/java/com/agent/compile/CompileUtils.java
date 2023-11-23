@@ -346,9 +346,8 @@ public class CompileUtils {
                 } else {
                     actualBase = (Local) curr;
                 }
-                Stmt orinext = (Stmt) (new BriefUnitGraph(body)).getSuccsOf(stori).get(0);
-                Stmt branchnull = Jimple.v().newIfStmt(Jimple.v().newEqExpr(actualBase, NullConstant.v()), orinext);
-                stlist.add(branchnull);
+
+                stlist.add(generateNullCheckStmt(body, stori, baseval));
 
                 Local tmp = Jimple.v().newLocal("tpfield" + (id++), sf.getType());
                 body.getLocals().add(tmp);
@@ -395,6 +394,12 @@ public class CompileUtils {
             stlist.add(eventStmt);
         }
         return stlist;
+    }
+
+    public static Stmt generateNullCheckStmt(Body body, Stmt stori, Value obj) {
+        Stmt orinext = (Stmt) (new BriefUnitGraph(body)).getSuccsOf(stori).get(0);
+        Stmt branchnull = Jimple.v().newIfStmt(Jimple.v().newEqExpr(obj, NullConstant.v()), orinext);
+        return branchnull;
     }
 
     public static SootField findField(SootClass sclass, String fieldName) {
