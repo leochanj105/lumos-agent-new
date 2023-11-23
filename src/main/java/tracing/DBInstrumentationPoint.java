@@ -89,11 +89,11 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
                 InstanceInvokeExpr inexpr = (InstanceInvokeExpr) iexpr;
                 if (isInject()) {
                     if (inexpr.getMethod().toString().contains("save")) {
-                        Value order = inexpr.getArg(0);
+                        Value obj = inexpr.getArg(0);
 
                         // if (sf != null) {
                         // insts = CompileUtils.generateDBInjectStmts(body, order, field);
-                        insts = CompileUtils.generateDBInjectStmts(body, order);
+                        insts = CompileUtils.generateDBInjectStmts(body, obj);
                         // }
 
                     }

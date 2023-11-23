@@ -169,6 +169,16 @@ public class AgentThread implements Runnable, MessageHandler {
 
     }
 
+    public void setORMInjectOn(boolean b) {
+        LumosAgent.SOInjectOn = b;
+        refreshTPs();
+    }
+
+    public void setTPInstOn(boolean b) {
+        LumosAgent.TPInstOn = b;
+        refreshTPs();
+    }
+
     public void reload(Map<String, byte[]> cmap) {
         try {
             this.agent.reload(cmap);
@@ -285,7 +295,7 @@ public class AgentThread implements Runnable, MessageHandler {
         // while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
         if (sname.contains("ts-order-service")) {
-            // playground(5);
+            playground(5);
         }
         /*
          * 

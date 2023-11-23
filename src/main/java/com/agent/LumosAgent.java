@@ -400,15 +400,7 @@ public class LumosAgent {
         // instrument();
     }
 
-    public static void setORMInjectOn(boolean b) {
-        SOInjectOn = b;
-        instrument();
-    }
-
-    public static void setTPInstOn(boolean b) {
-        TPInstOn = b;
-        instrument();
-    }
+    
 
     public static Map<String, byte[]> instrument() {
         Map<String, byte[]> cmap = new HashMap<>();
