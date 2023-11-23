@@ -191,6 +191,7 @@ public class CompileUtils {
         }
 
         Local tmpString1 = getLocal(body, "tmpString1", RefType.v("java.lang.String"));
+        Local tmpString2 = getLocal(body, "tmpString2", RefType.v("java.lang.String"));
 
         Local tmpSpctx = getLocal(body, "tmpSpctx",
                 RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext"));
@@ -211,6 +212,16 @@ public class CompileUtils {
         AssignStmt astmt2 = Jimple.v().newAssignStmt(tmpString1,
                 Jimple.v().newInterfaceInvokeExpr(tmpSpctx, getTidMethod.makeRef()));
         insts.add(astmt2);
+
+        String id = "000";
+
+        AssignStmt stmt3 = Jimple.v().newAssignStmt(tmpString2,
+                StringConstant.v("_" + id + "_000"));
+        insts.add(stmt3);
+        SootMethod concatMethod = getMethod("java.lang.String", "java.lang.String concat(java.lang.String)");
+        AssignStmt stmt4 = Jimple.v().newAssignStmt(tmpString1, Jimple.v().newVirtualInvokeExpr(tmpString1,
+                concatMethod.makeRef(), tmpString2));
+        insts.add(stmt4);
 
         SootClass sclass = LumosAgent.classMap.get(obj.getType().toString());
         SootField sf = null;

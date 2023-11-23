@@ -154,7 +154,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         List<Stmt> extracStmts = new ArrayList<>();
         // Local tmpMap = CompileUtils.getLocal(body, "tmpMap",
         // RefType.v("java.util.HashMap"));
-        Local tmpMap = CompileUtils.getLocal(body, "tmpMap", RefType.v("java.lang.String"));
+        Local tmpMap = CompileUtils.getLocal(body, "ctx", RefType.v("java.lang.String"));
         SootField sf = CompileUtils.findField(((RefType) objLocal.getType()).getSootClass(),
                 "LumosContext");
 
@@ -174,7 +174,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         // Collections.emptyList(),
         // false, null, "WRITECONTEXT_" + field);
         List<Stmt> traceStmts = CompileUtils.generateTPStmts(body, tmpMap, Collections.emptyList(),
-                false, null, "WRITER");
+                false, null, "" + uid);
         extracStmts.addAll(traceStmts);
         return extracStmts;
     }
