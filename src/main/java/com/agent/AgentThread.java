@@ -268,9 +268,10 @@ public class AgentThread implements Runnable, MessageHandler {
                     DBInstrumentationPoint dbinst = new DBInstrumentationPoint(sm2.toString(), stmt.toString(), false,
                             1, "order.domain.Order");
                     LumosAgent.addTP(dbinst);
-                    TimestampedInstrumentation tinst = new TimestampedInstrumentation(sm2.toString(), stmt.toString(),
-                            9);
-                    LumosAgent.addTP(tinst);
+                    // TimestampedInstrumentation tinst = new
+                    // TimestampedInstrumentation(sm2.toString(), stmt.toString(),
+                    // 9);
+                    // LumosAgent.addTP(tinst);
                 }
             }
         }
