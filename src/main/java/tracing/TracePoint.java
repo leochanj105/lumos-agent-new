@@ -38,12 +38,12 @@ public class TracePoint implements LumosInstrumentation {
     }
 
     public TracePoint(String uid, String sm, String stmt, int line, String val) {
-        this(uid,sm,stmt,line,val, Collections.emptyList());
+        this(uid, sm, stmt, line, val, Collections.emptyList());
     }
 
     @Override
-    public String toString(){
-        return this.sm+": " + this.stmt +" ==> " + this.val + "." + this.suffix;
+    public String toString() {
+        return this.sm + ": " + this.stmt + " ==> " + this.val + "." + this.suffix;
     }
 
     @Override
@@ -166,10 +166,10 @@ public class TracePoint implements LumosInstrumentation {
 
     @Override
     public List<Stmt> addInsts() {
-	if(!LumosAgent.TPInstOn){
-	    List<Stmt> empty = new ArrayList<>();
-	    return empty;
-	}
+        if (!LumosAgent.TPInstOn) {
+            List<Stmt> empty = new ArrayList<>();
+            return empty;
+        }
         Body b = getBody();
         Stmt stmt = getActualStmt();
         Value base = CompileUtils.findLocal(stmt, getVal());

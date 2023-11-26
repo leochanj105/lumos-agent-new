@@ -452,6 +452,17 @@ public class CompileUtils {
                 return stmt;
             }
         }
+        if (stmtStr.contains("if") && stmtStr.contains("(branch)")) {
+            String alternative = stmtStr.substring(0, stmtStr.indexOf("(branch)"));
+            for (Unit unit : b.getUnits()) {
+                Stmt stmt = (Stmt) unit;
+                boolean stmtMatched = stmt.toString().contains(alternative);
+                boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
+                if (stmtMatched && lineMatch) {
+                    return stmt;
+                }
+            }
+        }
         return null;
     }
 
