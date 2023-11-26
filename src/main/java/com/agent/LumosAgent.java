@@ -305,6 +305,7 @@ public class LumosAgent {
         p("Analyzing " + path);
         setupSoot(path);
         for (SootClass cls : Scene.v().getApplicationClasses()) {
+		
             if (cls.toString().contains("conf.HttpAspect")) {
                 continue;
             }
@@ -312,13 +313,13 @@ public class LumosAgent {
                 if (sm.isAbstract()) {
                     continue;
                 }
-
                 sm.retrieveActiveBody();
                 methodMap.put(sm.getSignature(), sm);
                 bodyMap.put(sm.getSignature(), ((Body) sm.getActiveBody().clone()));
             }
             classMap.put(cls.toString(), cls);
             // CompileUtils.outputJimple(cls, "AAA");
+	    
         }
         // p("----------");
         analyzeReady = true;
