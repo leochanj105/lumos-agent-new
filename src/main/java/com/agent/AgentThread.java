@@ -128,20 +128,20 @@ public class AgentThread implements Runnable, MessageHandler {
                     if (sotype.contains("Repository")) {
                         toadd = new DBInstrumentationPoint(id, method, stmt, false, soclass);
                     } else if (sotype.contains("ValueOperations") || sotype.contains("ClassShared")
-				    || sotype.contains("Atomic")) {
+                            || sotype.contains("Atomic")) {
                         toadd = new TimestampedInstrumentation(id, method, stmt);
                     } else {
-                        LumosAgent.p("[WARN] SO type not supported!!!");
+                        LumosAgent.p("[WARN] SO type not supported for read: " + sotype);
                     }
                 } else if (tptype.equals("sowrite")) {
                     String sotype = tp.getString("sotype");
                     if (sotype.contains("Repository")) {
                         toadd = new DBInstrumentationPoint(id, method, stmt, true, "");
                     } else if (sotype.contains("ValueOperations") || sotype.contains("ClassShared")
-				    || sotype.contains("Atomic")) {
+                            || sotype.contains("Atomic")) {
                         toadd = new TimestampedInstrumentation(id, method, stmt);
                     } else {
-                        LumosAgent.p("[WARN] SO type not supported!!!");
+                        LumosAgent.p("[WARN] SO type not supported for write: " + sotype);
                     }
 
                 } else {
