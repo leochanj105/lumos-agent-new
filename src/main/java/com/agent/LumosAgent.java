@@ -305,7 +305,7 @@ public class LumosAgent {
         p("Analyzing " + path);
         setupSoot(path);
         for (SootClass cls : Scene.v().getApplicationClasses()) {
-		
+
             if (cls.toString().contains("conf.HttpAspect")) {
                 continue;
             }
@@ -319,7 +319,7 @@ public class LumosAgent {
             }
             classMap.put(cls.toString(), cls);
             // CompileUtils.outputJimple(cls, "AAA");
-	    
+
         }
         // p("----------");
         analyzeReady = true;
@@ -424,10 +424,10 @@ public class LumosAgent {
                 Stmt stmt = targetstmts.get(i);
                 LumosInstrumentation inst = targetInsts.get(i);
                 if (!(inst instanceof TimestampedInstrumentation)) {
-                List<Stmt> inserts = inst.addInsts();
-                if (inserts.size() > 0) {
-                    CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
-                }
+                    List<Stmt> inserts = inst.addInsts();
+                    if (inserts.size() > 0) {
+                        CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+                    }
                 }
             }
 
@@ -440,7 +440,11 @@ public class LumosAgent {
                         CompileUtils.insertAt(units, stmt, inserts.get(0), true);
                         inserts.remove(0);
                         CompileUtils.insertAt(units, stmt, inserts, false);
+                        for (Unit uu : units) {
+                            p(uu + "");
+                        }
                     }
+
                 }
             }
             sm.setActiveBody(b);
