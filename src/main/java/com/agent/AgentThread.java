@@ -211,7 +211,6 @@ public class AgentThread implements Runnable, MessageHandler {
     public void reload(Map<String, byte[]> cmap) {
         try {
             this.agent.reload(cmap);
-
         } catch (UnmodifiableClassException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

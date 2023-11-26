@@ -111,9 +111,9 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
                         if (resType.contains("List")) {
 
                             Local limit = CompileUtils.getLocal(body, "loopLimit", IntType.v());
-                            SootMethod sizeMethod = CompileUtils.getMethod("java.util.ArrayList", "int size()");
+                            SootMethod sizeMethod = CompileUtils.getMethod("java.util.List", "int size()");
                             AssignStmt astmt = Jimple.v().newAssignStmt(limit,
-                                    Jimple.v().newVirtualInvokeExpr(obj, sizeMethod.makeRef()));
+                                    Jimple.v().newInterfaceInvokeExpr(obj, sizeMethod.makeRef()));
                             insts.add(astmt);
 
                             Local loopVar = CompileUtils.getLocal(body, "loopVar", IntType.v());
@@ -121,10 +121,10 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
                             List<Stmt> loopStmts = new ArrayList<>();
                             Local objLocal = CompileUtils.getLocal(body, "objLocal", RefType.v("java.lang.Object"));
 
-                            SootMethod getMethod = CompileUtils.getMethod("java.util.ArrayList",
+                            SootMethod getMethod = CompileUtils.getMethod("java.util.List",
                                     "java.lang.Object get(int)");
                             AssignStmt astmt2 = Jimple.v().newAssignStmt(objLocal,
-                                    Jimple.v().newVirtualInvokeExpr(obj, getMethod.makeRef(), loopVar));
+                                    Jimple.v().newInterfaceInvokeExpr(obj, getMethod.makeRef(), loopVar));
                             loopStmts.add(astmt2);
 
                             AssignStmt astmt3 = Jimple.v().newAssignStmt(targetLocal,
