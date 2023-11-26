@@ -440,9 +440,9 @@ public class LumosAgent {
                         CompileUtils.insertAt(units, stmt, inserts.get(0), true);
                         inserts.remove(0);
                         CompileUtils.insertAt(units, stmt, inserts, false);
-                        for (Unit uu : units) {
-                            p(uu + "");
-                        }
+                        // for (Unit uu : units) {
+                        // p(uu + "");
+                        // }
                     }
 
                 }
