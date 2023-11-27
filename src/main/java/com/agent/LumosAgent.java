@@ -91,7 +91,7 @@ public class LumosAgent {
                 || clsname.endsWith("inside_payment.domain.AddMoney") ||
                 clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment")
                 ||
-                clsname.endsWith("sso.domain.Account"));
+                clsname.endsWith("sso.domain.Account") || clsname.endsWith("inside_payment.domain.DrawBack"));
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -440,9 +440,9 @@ public class LumosAgent {
                         CompileUtils.insertAt(units, stmt, inserts.get(0), true);
                         inserts.remove(0);
                         CompileUtils.insertAt(units, stmt, inserts, false);
-                        // for (Unit uu : units) {
-                        // p(uu + "");
-                        // }
+                         for (Unit uu : units) {
+                           p(uu + "");
+                         }
                     }
 
                 }

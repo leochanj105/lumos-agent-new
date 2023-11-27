@@ -105,7 +105,8 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
 
                         Local obj = (Local) (findStmt).getLeftOp();
                         insts.add(CompileUtils.generateNullCheckStmt(body, stmt, obj));
-                        Local targetLocal = CompileUtils.getLocal(body, "targetLocal", RefType.v(this.objClassName));
+			
+                        Local targetLocal = CompileUtils.getLocal(body, "TL_" + this.objClassName.replace(".","_"), RefType.v(this.objClassName));
 
                         String resType = findStmt.getLeftOp().getType().toString();
                         if (resType.contains("List")) {
