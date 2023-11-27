@@ -222,6 +222,16 @@ public class LumosAgent {
         return true;
     }
 
+    public static void removeAllTPs() {
+        for (String m : methodTPMap.keySet()) {
+            Set<LumosInstrumentation> lms = methodTPMap.get(m);
+            if (lms != null) {
+                lms.clear();
+            }
+        }
+        allTPs.clear();
+    }
+
     public static boolean removeTP(LumosInstrumentation tp) {
         if (!allTPs.contains(tp)) {
             return false;
