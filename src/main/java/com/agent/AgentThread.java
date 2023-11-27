@@ -101,6 +101,10 @@ public class AgentThread implements Runnable, MessageHandler {
         } else if (jstr.equals("TPOff")) {
             setTPInstOn(false);
             return;
+        } else if (jstr.equals("RemoveTP")) {
+            LumosAgent.removeAllTPs();
+            refreshTPs();
+            return;
         }
         JSONObject obj = new JSONObject(jstr);
         String x = obj.getString("type");
