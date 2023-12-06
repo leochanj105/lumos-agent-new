@@ -79,7 +79,8 @@ public class LumosAgent {
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
     // public static String cpath =
-    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";
+    // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";a
+    public static boolean allOn = true;
     public static boolean ORMContextOn = true;
     public static boolean SOInjectOn = true;
     public static boolean TPInstOn = true;
@@ -100,6 +101,18 @@ public class LumosAgent {
         // classPool.appendClassPath(new
         // LoaderClassPath(Thread.currentThread().getContextClassLoader()));
         // System.out.println("[XXXX] " + classPool);
+	String empty = System.getProperty("empty");
+	if(empty != null && empty.contains("true")){
+		p("empty config -- turning orm and otlp off");
+		allOn = false;
+	}
+
+
+	String orm = System.getProperty("orm");
+	if(empty != null && empty.contains("false")){
+		p("no orm");
+		ORMContextOn = false;
+	}
         setupSoot(cpath);
         analyzePath(cpath);
         inst.addTransformer(new ClassFileTransformer() {
@@ -116,10 +129,11 @@ public class LumosAgent {
                     if (LumosAgent.cloader == null) {
                         System.out.println("Hooked " + loader);
                         LumosAgent.cloader = loader;
+			//System.out.println(LumosAgent.cloader);
                     }
-                    if (!ORMContextOn) {
-                        return classFileBuffer;
-                    }
+                    //if (!ORMContextOn) {
+                    //    return classFileBuffer;
+                    //}
                     // String targetName = "order.domain.Order";
                     // String actualName = targetName.replace('.', File.separatorChar);
 
@@ -136,8 +150,7 @@ public class LumosAgent {
                     // className.substring(className.lastIndexOf(File.separatorChar)+1);
                     if (checkORMClass(targetName)) {
                         // System.out.println("className: " + className);
-                        System.out.println("target: " + targetName);
-                        System.out.println("adding to " + className);
+
                         SootClass sclass = null;
                         // while(sclass == null){
                         sclass = findClassExact(targetName);
@@ -151,7 +164,11 @@ public class LumosAgent {
 
                         // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
                         // addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
-                        addFieldToClass(sclass, "java.lang.String", "LumosContext");
+			if(ORMContextOn){
+                        	System.out.println("target: " + targetName);
+	                        System.out.println("adding to " + className);
+	                        addFieldToClass(sclass, "java.lang.String", "LumosContext");
+			}
                         /*
                          * for(SootMethod method: sclass.getMethods()){
                          * if(method.getName().contains("<init>")){
@@ -297,10 +314,13 @@ public class LumosAgent {
         Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.Object", SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
-        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
-                SootClass.SIGNATURES);
-        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
-                SootClass.SIGNATURES);
+	if(allOn){
+		p("loading otlp classes...");
+	        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+        	        SootClass.SIGNATURES);
+	        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
+        	        SootClass.SIGNATURES);
+	}
         // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
         // SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
@@ -315,11 +335,12 @@ public class LumosAgent {
         p("Analyzing " + path);
         setupSoot(path);
         for (SootClass cls : Scene.v().getApplicationClasses()) {
-
+	//    p(""+cls);
             if (cls.toString().contains("conf.HttpAspect")) {
                 continue;
             }
             for (SootMethod sm : cls.getMethods()) {
+	//	 p(""+sm);
                 if (sm.isAbstract()) {
                     continue;
                 }
@@ -331,8 +352,9 @@ public class LumosAgent {
             // CompileUtils.outputJimple(cls, "AAA");
 
         }
-        // p("----------");
+        p("----Analysis Done------");
         analyzeReady = true;
+	//p("analyzeReady: " + analyzeReady);
     }
 
     public static Body findBody(String name) {

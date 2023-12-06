@@ -102,6 +102,7 @@ public class AgentThread implements Runnable, MessageHandler {
             setTPInstOn(false);
             return;
         } else if (jstr.equals("RemoveTP")) {
+	    System.out.println("RemoveTP");
             LumosAgent.removeAllTPs();
             refreshTPs();
             return;
@@ -190,6 +191,7 @@ public class AgentThread implements Runnable, MessageHandler {
 
     public void refreshTPs() {
         System.out.println("[LUMOS] Instrumenting...");
+	long start = System.currentTimeMillis();
         Map<String, byte[]> cmap = LumosAgent.instrument();
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
@@ -197,6 +199,8 @@ public class AgentThread implements Runnable, MessageHandler {
         if (cmap.keySet().size() > 0) {
             reload(cmap);
         }
+	long instrumentDuration = System.currentTimeMillis() - start;
+	System.out.println("Instrumentation time: " + instrumentDuration);
 
     }
 
@@ -314,10 +318,17 @@ public class AgentThread implements Runnable, MessageHandler {
 
     @Override
     public void run() {
+	System.out.println("Agent thread started");
         // Wait Until we hooked the Spring classloader
-        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady)
-            ;
-
+        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady){
+		//System.out.println(LumosAgent.cloader);
+		//System.out.println(LumosAgent.analyzeReady);
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+            }
+	}
+	System.out.println("Agent ready");
         // int seconds = 10;
         // for (int i = 0; i < seconds; i++) {
         // try {
@@ -379,7 +390,7 @@ public class AgentThread implements Runnable, MessageHandler {
          **/
         while (true) {
             try {
-                Thread.sleep(5000);
+                Thread.sleep(1000000);
             } catch (InterruptedException e) {
             }
         }
