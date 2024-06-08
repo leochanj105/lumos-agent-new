@@ -1,56 +1,30 @@
 package com.agent;
 
 import java.lang.instrument.Instrumentation;
-import java.lang.Thread;
-import javassist.CannotCompileException;
-import javassist.ClassPool;
-import javassist.CtClass;
-import javassist.CtConstructor;
-import javassist.NotFoundException;
 import java.lang.instrument.UnmodifiableClassException;
-import java.util.Collection;
-import java.util.List;
-import java.util.ArrayList;
-import tracing.TracePoint;
-
-import com.agent.compile.CompileUtils;
-
-import java.lang.reflect.Field;
-import java.lang.ClassLoader;
-import java.util.Vector;
 import java.net.URI;
-import java.sql.Time;
-
-import com.google.common.collect.Lists;
-// import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
-import edu.brown.cs.systems.dynamicinstrumentation.*;
-
-import javassist.bytecode.AnnotationsAttribute;
-import javassist.bytecode.annotation.Annotation;
-import javassist.bytecode.ConstPool;
-import org.json.*;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+// import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
+import edu.brown.cs.systems.dynamicinstrumentation.DynamicManager;
+import edu.brown.cs.systems.dynamicinstrumentation.DynamicModification;
+import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
+import soot.Body;
+import soot.SootClass;
+import soot.SootMethod;
+import soot.Unit;
+import soot.Value;
+import soot.jimple.Stmt;
 import tracing.DBInstrumentationPoint;
 import tracing.LumosInstrumentation;
 import tracing.TimestampedInstrumentation;
-import soot.SootClass;
-import soot.SootField;
-import soot.SootFieldRef;
-import soot.SootMethod;
-import soot.Unit;
-import soot.jimple.Stmt;
-import soot.Value;
-import soot.Body;
-import soot.ValueBox;
-import soot.IntType;
-import soot.Local;
-import soot.jimple.AssignStmt;
-import soot.jimple.Constant;
-import soot.jimple.InvokeStmt;
-import soot.jimple.Jimple;
+import tracing.TracePoint;
 
 public class AgentThread implements Runnable, MessageHandler {
     public Instrumentation inst;
@@ -102,7 +76,7 @@ public class AgentThread implements Runnable, MessageHandler {
             setTPInstOn(false);
             return;
         } else if (jstr.equals("RemoveTP")) {
-	    System.out.println("RemoveTP");
+            System.out.println("RemoveTP");
             LumosAgent.removeAllTPs();
             refreshTPs();
             return;
@@ -191,7 +165,7 @@ public class AgentThread implements Runnable, MessageHandler {
 
     public void refreshTPs() {
         System.out.println("[LUMOS] Instrumenting...");
-	long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         Map<String, byte[]> cmap = LumosAgent.instrument();
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
@@ -199,8 +173,8 @@ public class AgentThread implements Runnable, MessageHandler {
         if (cmap.keySet().size() > 0) {
             reload(cmap);
         }
-	long instrumentDuration = System.currentTimeMillis() - start;
-	System.out.println("Instrumentation time: " + instrumentDuration);
+        long instrumentDuration = System.currentTimeMillis() - start;
+        System.out.println("Instrumentation time: " + instrumentDuration);
 
     }
 
@@ -318,17 +292,21 @@ public class AgentThread implements Runnable, MessageHandler {
 
     @Override
     public void run() {
-	System.out.println("Agent thread started");
+        System.out.println("Agent thread started");
         // Wait Until we hooked the Spring classloader
-        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady){
-		//System.out.println(LumosAgent.cloader);
-		//System.out.println(LumosAgent.analyzeReady);
+        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady) {
+            // System.out.println(LumosAgent.cloader);
+            // System.out.println(LumosAgent.analyzeReady);
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
             }
-	}
-	System.out.println("Agent ready");
+        }
+        System.out.println("Agent ready");
+        if(LumosAgent.cloader!=null){
+            loop(1000000);
+        }
+        LumosAgent.tplay();
         // int seconds = 10;
         // for (int i = 0; i < seconds; i++) {
         // try {
@@ -388,9 +366,12 @@ public class AgentThread implements Runnable, MessageHandler {
          * e.printStackTrace();
          * }
          **/
+        loop(1000000);
+    }
+    public static void loop(int ms){
         while (true) {
             try {
-                Thread.sleep(1000000);
+                Thread.sleep(ms);
             } catch (InterruptedException e) {
             }
         }

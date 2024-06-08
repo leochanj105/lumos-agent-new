@@ -1,50 +1,32 @@
 package com.agent;
 
-import java.lang.instrument.Instrumentation;
-import javassist.ClassPool;
-import javassist.LoaderClassPath;
-
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.ClassLoader;
 import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.agent.compile.CompileUtils;
 
-import java.net.URLClassLoader;
-
 import soot.Body;
-import soot.jimple.JimpleBody;
 import soot.G;
 import soot.PatchingChain;
 import soot.RefType;
-import soot.SootField;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Unit;
-import soot.Value;
-import soot.jimple.Jimple;
 import soot.jimple.Stmt;
-import soot.jimple.internal.JGotoStmt;
-import soot.jimple.internal.JIfStmt;
-import soot.jimple.internal.JReturnStmt;
-import soot.jimple.internal.JReturnVoidStmt;
 import soot.options.Options;
-import tracing.*;
+import tracing.LumosInstrumentation;
+import tracing.TimestampedInstrumentation;
 
 /**
  * Hello world!
@@ -74,25 +56,29 @@ public class LumosAgent {
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
     public static String jarpath = "/app/opentelemetry-javaagent.jar";
-    public static String cpath = "/app/classes";
+    // public static String cpath = "/app/classes";
+    public static String cpath = "";
+    public static List<String> includeList;
+    public static List<String> processList;
     // public static String jarpat
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
     // public static String cpath =
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\target\\classes";a
-    public static boolean allOn = true;
-    public static boolean ORMContextOn = true;
-    public static boolean SOInjectOn = true;
-    public static boolean TPInstOn = true;
+    public static boolean allOn = false;
+    public static boolean ORMContextOn =false;
+    public static boolean SOInjectOn =false;
+    public static boolean TPInstOn =false;
 
     public static boolean checkORMClass(String clsname) {
-        return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") ||
-                clsname.endsWith("sso.domain.LoginValue") ||
-                clsname.endsWith("com.trainticket.domain.AddMoney")
-                || clsname.endsWith("inside_payment.domain.AddMoney") ||
-                clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment")
-                ||
-                clsname.endsWith("sso.domain.Account") || clsname.endsWith("inside_payment.domain.DrawBack"));
+        return false;
+        // return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") ||
+        //         clsname.endsWith("sso.domain.LoginValue") ||
+        //         clsname.endsWith("com.trainticket.domain.AddMoney")
+        //         || clsname.endsWith("inside_payment.domain.AddMoney") ||
+        //         clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment")
+        //         ||
+        //         clsname.endsWith("sso.domain.Account") || clsname.endsWith("inside_payment.domain.DrawBack"));
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -101,20 +87,21 @@ public class LumosAgent {
         // classPool.appendClassPath(new
         // LoaderClassPath(Thread.currentThread().getContextClassLoader()));
         // System.out.println("[XXXX] " + classPool);
-	String empty = System.getProperty("empty");
-	if(empty != null && empty.contains("true")){
-		p("empty config -- turning orm and otlp off");
-		allOn = false;
-	}
+        /*
+        String empty = System.getProperty("empty");
+        if (empty != null && empty.contains("true")) {
+            p("empty config -- turning orm and otlp off");
+            allOn = false;
+        }
 
-
-	String orm = System.getProperty("orm");
-	if(empty != null && empty.contains("false")){
-		p("no orm");
-		ORMContextOn = false;
-	}
-        setupSoot(cpath);
-        analyzePath(cpath);
+        String orm = System.getProperty("orm");
+        if (empty != null && empty.contains("false")) {
+            p("no orm");
+            ORMContextOn = false;
+        }
+        */
+        // setupSoot(cpath);
+        // analyzePath(cpath);
         inst.addTransformer(new ClassFileTransformer() {
             @Override
             public byte[] transform(
@@ -125,15 +112,16 @@ public class LumosAgent {
                     byte[] classFileBuffer) {
 
                 if (loader != null
-                        && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                        // && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                        && loader.getClass().getName().contains("Loader")) {
                     if (LumosAgent.cloader == null) {
                         System.out.println("Hooked " + loader);
                         LumosAgent.cloader = loader;
-			//System.out.println(LumosAgent.cloader);
+                        // System.out.println(LumosAgent.cloader);
                     }
-                    //if (!ORMContextOn) {
-                    //    return classFileBuffer;
-                    //}
+                    // if (!ORMContextOn) {
+                    // return classFileBuffer;
+                    // }
                     // String targetName = "order.domain.Order";
                     // String actualName = targetName.replace('.', File.separatorChar);
 
@@ -143,11 +131,6 @@ public class LumosAgent {
                     // }
 
                     String targetName = className.replace(File.separatorChar, '.');
-                    // if(targetName.contains("inside_payment") && targetName.contains("Order")){
-                    // System.out.println(targetName);
-                    // }
-                    // String shortName =
-                    // className.substring(className.lastIndexOf(File.separatorChar)+1);
                     if (checkORMClass(targetName)) {
                         // System.out.println("className: " + className);
 
@@ -164,11 +147,11 @@ public class LumosAgent {
 
                         // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
                         // addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
-			if(ORMContextOn){
-                        	System.out.println("target: " + targetName);
-	                        System.out.println("adding to " + className);
-	                        addFieldToClass(sclass, "java.lang.String", "LumosContext");
-			}
+                        if (ORMContextOn) {
+                            System.out.println("target: " + targetName);
+                            System.out.println("adding to " + className);
+                            addFieldToClass(sclass, "java.lang.String", "LumosContext");
+                        }
                         /*
                          * for(SootMethod method: sclass.getMethods()){
                          * if(method.getName().contains("<init>")){
@@ -261,7 +244,8 @@ public class LumosAgent {
         return false;
     }
 
-    public static void setupSoot(String path) {
+    public static void setupSoot(Collection<String> cpath, List<String> pdir) {
+    // public static void setupSoot(String path) {
         G.reset();
 
         Options.v().set_prepend_classpath(true);
@@ -280,17 +264,18 @@ public class LumosAgent {
         // Spring annotations rely on this!!
         Options.v().set_write_local_annotations(true);
 
-        // Options.v().set_soot_classpath(path);
-        // p(File.pathSeparator);
-        Options.v().set_soot_classpath(jarpath + File.pathSeparator + path);
+        String classpath = "";
+        for (String cp : cpath) {
+            classpath += cp + File.pathSeparator;
+        }
+        if (classpath.charAt(classpath.length() - 1) == File.pathSeparatorChar) {
+            classpath = classpath.substring(0, classpath.length() - 1);
+        }
+        Options.v().set_soot_classpath(classpath);
         Options.v().set_java_version(8);
+        processList = new ArrayList<String>();
 
-        // Options.v().class
-        // Options.v().set_process_dir(Collections.singletonList(sourceDirectory));
-        // List<String> processList = new ArrayList<String>();
-
-        String arr[] = { path };
-        Options.v().set_process_dir(Arrays.asList(arr));
+        Options.v().set_process_dir(pdir);
 
         Options.v().set_no_bodies_for_excluded(true);
         Options.v().set_print_tags_in_output(true);
@@ -305,7 +290,39 @@ public class LumosAgent {
 
         // Need this to include all subtypes
         // Options.v().setPhaseOption("cg", "library:any-subtype");
-
+        setExcludes();
+        setIncludes();
+        if (allOn) {
+            p("loading otlp classes...");
+            Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+                    SootClass.SIGNATURES);
+            Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
+                    SootClass.SIGNATURES);
+        }
+        // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
+        // SootClass.SIGNATURES);
+        Scene.v().loadNecessaryClasses();
+    }
+    public static void setExcludes(){
+        String[] exClasses = {"org.apache.hadoop.ant.*",
+                "org.apache.hadoop.record.*", "org.apache.hadoop.metrics.*",
+                "org.apache.hadoop.log.*",
+                "org.apache.hadoop.metrics2.*",
+                "org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer",
+                "org.apache.hadoop.http.*",
+                "org.apache.hadoop.hdfs.web.*",
+                "org.apache.hadoop.hdfs.server.datanode.*",
+                "org.apache.hadoop.fs.shell.*"};
+        List<String> excludePackagesList = Arrays.asList(exClasses);
+        Options.v().set_exclude(excludePackagesList);
+        Options.v().set_no_bodies_for_excluded(true);
+        Options.v().set_print_tags_in_output(true);
+    }
+    public static void setIncludes(){
+        includeList = new ArrayList<String>();
+        includeList.add("java.lang.*");
+        includeList.add("java.util.*");
+        Options.v().set_include(includeList);
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
@@ -314,16 +331,6 @@ public class LumosAgent {
         Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.Object", SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
-	if(allOn){
-		p("loading otlp classes...");
-	        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
-        	        SootClass.SIGNATURES);
-	        Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
-        	        SootClass.SIGNATURES);
-	}
-        // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
-        // SootClass.SIGNATURES);
-        Scene.v().loadNecessaryClasses();
     }
 
     public static void p(String s) {
@@ -333,14 +340,14 @@ public class LumosAgent {
     public static void analyzePath(String path) {
         // Options.v().set
         p("Analyzing " + path);
-        setupSoot(path);
+        // setupSoot(path);
         for (SootClass cls : Scene.v().getApplicationClasses()) {
-	//    p(""+cls);
+            // p(""+cls);
             if (cls.toString().contains("conf.HttpAspect")) {
                 continue;
             }
             for (SootMethod sm : cls.getMethods()) {
-	//	 p(""+sm);
+                // p(""+sm);
                 if (sm.isAbstract()) {
                     continue;
                 }
@@ -354,7 +361,7 @@ public class LumosAgent {
         }
         p("----Analysis Done------");
         analyzeReady = true;
-	//p("analyzeReady: " + analyzeReady);
+        // p("analyzeReady: " + analyzeReady);
     }
 
     public static Body findBody(String name) {
@@ -418,9 +425,18 @@ public class LumosAgent {
         return null;
     }
 
+    public static void tplay() {
+        String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
+        List<String> cpaths = new ArrayList<String>();
+        List<String> apaths = new ArrayList<String>();
+        cpaths.add(testPath);
+        apaths.addAll(cpaths);
+        setupSoot(cpaths, apaths);
+        // analyzePath(cpath);
+    }
     public static void play() {
-        setupSoot(cpath);
-        analyzePath(cpath);
+        // setupSoot(cpath);
+        // analyzePath(cpath);
 
         // String methodName = "sendInsidePayment";
         // String valueName = "$stack29";
@@ -472,9 +488,9 @@ public class LumosAgent {
                         CompileUtils.insertAt(units, stmt, inserts.get(0), true);
                         inserts.remove(0);
                         CompileUtils.insertAt(units, stmt, inserts, false);
-                         for (Unit uu : units) {
-                           p(uu + "");
-                         }
+                        for (Unit uu : units) {
+                            p(uu + "");
+                        }
                     }
 
                 }

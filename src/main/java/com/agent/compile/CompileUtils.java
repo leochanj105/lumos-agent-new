@@ -1,20 +1,14 @@
 package com.agent.compile;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Collections;
+import java.util.Set;
 
 import com.agent.LumosAgent;
 
@@ -24,45 +18,47 @@ import com.agent.LumosAgent;
 
 // import jas.StringCP;
 import soot.Body;
-import soot.G;
 import soot.Local;
-import soot.PackManager;
 import soot.PatchingChain;
 import soot.Printer;
 import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootField;
-import soot.SootFieldRef;
 import soot.SootMethod;
+import soot.Type;
 import soot.Unit;
 import soot.Value;
 import soot.ValueBox;
-import soot.Type;
-import soot.IntType;
-
 import soot.baf.BafASMBackend;
 import soot.jimple.AssignStmt;
 import soot.jimple.Constant;
+import soot.jimple.GotoStmt;
+import soot.jimple.IfStmt;
 import soot.jimple.IntConstant;
 import soot.jimple.InvokeStmt;
-import soot.jimple.IfStmt;
-import soot.jimple.GotoStmt;
 import soot.jimple.Jimple;
 import soot.jimple.JimpleBody;
+import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
-import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JInstanceFieldRef;
-import soot.options.Options;
 import soot.toolkits.graph.BriefUnitGraph;
-import soot.jimple.NullConstant;
 
 public class CompileUtils {
 
     // public static Map<String, Body> bodyMap = new HashMap<>();
     public static int id = 0;
+    public static Set<String> primitiveNames = new HashSet<>(
+     Arrays.asList(new String[] { "Byte", "Double", "Float", "Integer",
+              "Long", "Char", "Boolean", "Short", "String" }));
+    public static String trim(String fn) {
+        return fn.substring(fn.lastIndexOf('.') + 1);
+    }
 
+    public static boolean isPrimitive(Type t){
+        return primitiveNames.contains(trim(t.toString()));
+    }
     public static void insertAt(PatchingChain<Unit> units, Stmt target, Stmt toinsert, boolean before) {
         if (before) {
             units.insertBefore(toinsert, target);
@@ -463,7 +459,7 @@ public class CompileUtils {
                 }
             }
         }
-	System.out.println("!!! " + stmtStr);
+        System.out.println("!!! " + stmtStr);
         return null;
     }
 
