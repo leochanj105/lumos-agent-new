@@ -166,7 +166,7 @@ public class AgentThread implements Runnable, MessageHandler {
     public void refreshTPs() {
         System.out.println("[LUMOS] Instrumenting...");
         long start = System.currentTimeMillis();
-        Map<String, byte[]> cmap = LumosAgent.instrument();
+        Map<String, byte[]> cmap = LumosAgent.instrumentOld();
         System.out.println(cmap.keySet());
         // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
         // LumosAgent.p(LumosAgent.forTest.length + "");
@@ -177,7 +177,18 @@ public class AgentThread implements Runnable, MessageHandler {
         System.out.println("Instrumentation time: " + instrumentDuration);
 
     }
+    public void refreshInsts() {
+        System.out.println("[LUMOS] Instrumenting...");
+        long start = System.currentTimeMillis();
+        Map<String, byte[]> cmap = LumosAgent.instrument();
+        // System.out.println(cmap.keySet());
+        if (cmap.keySet().size() > 0) {
+            reload(cmap);
+        }
+        long instrumentDuration = System.currentTimeMillis() - start;
+        System.out.println("Instrumentation time: " + instrumentDuration);
 
+    }
     public void setORMInjectOn(boolean b) {
         LumosAgent.p("ORM: " + b);
         LumosAgent.SOInjectOn = b;
@@ -191,46 +202,29 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void reload(Map<String, byte[]> cmap) {
-        try {
-            this.agent.reload(cmap);
-        } catch (UnmodifiableClassException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
+        for(String s:cmap.keySet()){
+            Map<String, byte[]> nmap = new HashMap<>();
+            nmap.put(s,cmap.get(s));
+            try {
+                // this.agent.reload(cmap);
+                this.agent.reload(nmap);
+            } catch (UnmodifiableClassException e) {
+                System.out.println("?! " + s);
+                e.printStackTrace();
+            } catch (Exception e) {
+                System.out.println("&& " + s);
+                e.printStackTrace();
+            }
         }
         LumosAgent.p("Instrumented");
     }
 
     public void handleMessage(String message) {
-        // System.out.println("Handling " + message);
-        // if(message.equals("keepalive"))
-        // return;
         try {
             handleJSON(message);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        /*
-         * String[] traceArgs = message.split(",", 0);
-         * System.out.println(traceArgs);
-         * String classname = traceArgs[0];
-         * String methodname = traceArgs[1];
-         * String code = traceArgs[2];
-         * int ln = Integer.parseInt(traceArgs[3]);
-         * //DynamicModification mod = new AnnotationModification(classname, methodname,
-         * WITHSPAN);
-         * DynamicModification mod = new InstructionModification(classname, methodname,
-         * code, ln);
-         * try{
-         * this.manager.add(mod);
-         * this.manager.install();
-         * }
-         * catch(Exception e){
-         * e.printStackTrace();
-         * }
-         * System.out.println("Instrumented!");
-         */
     }
 
     public static void countDown(int seconds) {
@@ -294,86 +288,41 @@ public class AgentThread implements Runnable, MessageHandler {
     public void run() {
         System.out.println("Agent thread started");
         // Wait Until we hooked the Spring classloader
-        while (LumosAgent.cloader == null || !LumosAgent.analyzeReady) {
-            // System.out.println(LumosAgent.cloader);
-            // System.out.println(LumosAgent.analyzeReady);
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-            }
+
+        while (LumosAgent.cloader == null) {
+            sleep(500);
         }
         System.out.println("Agent ready");
-        if(LumosAgent.cloader!=null){
-            loop(1000000);
-        }
+
+        String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
+        List<String> cpaths = new ArrayList<String>();
+        List<String> apaths = new ArrayList<String>();
+        cpaths.add(testPath);
+        apaths.addAll(cpaths);
+        apaths.add("/tmp/Global.jar");
+        LumosAgent.setupSoot(cpaths, apaths);
+        LumosAgent.setupClass("hdfs");
         LumosAgent.tplay();
-        // int seconds = 10;
-        // for (int i = 0; i < seconds; i++) {
-        // try {
-        // Thread.sleep(1000);
-        // } catch (Exception e) {
-        // e.printStackTrace();
-        // }
-        // System.out.println("[LUMOS] Count " + (seconds - i));
-        // }
+        refreshInsts();
 
         // Connect to websocket controller server
-        connect("ws://lumos:8765");
+        // connect("ws://lumos:8765");
 
         // while(!LumosAgent.playGroundFlag);
         // A test of adding a tracepoint, then remove it...
-        if (sname.contains("ts-order-service")) {
-            // playground(5);
-        }
-        /*
-         * 
-         * 
-         * //DynamicModification modifyMethod = new InstructionModification(CLASSNAME,
-         * METHODNAME, TESTTP, TESTLINE);
-         * DynamicModification modifyMethod = new AnnotationModification(CLASSNAME,
-         * METHODNAME, WITHSPAN);
-         * 
-         * try{
-         * this.manager.add(modifyMethod);
-         * this.manager.install();
-         * System.out.println("[LUMOS] Instrumented!");
-         * //this.client.close();
-         * }
-         * catch(Exception e){
-         * e.printStackTrace();
-         * }
-         */
-        /**
-         * seconds = 60;
-         * for(int i = 0; i < seconds; i++){
-         * try{
-         * Thread.sleep(1000);
-         * }
-         * catch(Exception e){
-         * }
-         * System.out.println("[LUMOS] Count " + (seconds - i));
-         * }
-         * 
-         * System.out.println("[LUMOS] Uninstrumenting...");
-         * try{
-         * this.manager.remove(modifyMethod);
-         * this.manager.install();
-         * System.out.println("[LUMOS] Uninstrumented!");
-         * 
-         * 
-         * }
-         * catch(Exception e){
-         * e.printStackTrace();
-         * }
-         **/
         loop(1000000);
     }
-    public static void loop(int ms){
+
+    public static void sleep(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+        }
+    }
+
+    public static void loop(int ms) {
         while (true) {
-            try {
-                Thread.sleep(ms);
-            } catch (InterruptedException e) {
-            }
+            sleep(ms);
         }
     }
 }

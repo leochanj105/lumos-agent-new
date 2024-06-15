@@ -75,10 +75,10 @@ public class TimestampedInstrumentation implements LumosInstrumentation {
         insts.add(stmt1);
         AssignStmt stmt2 = Jimple.v().newAssignStmt(tp2, Jimple.v().newStaticInvokeExpr(timeMethod.makeRef()));
         insts.add(stmt2);
-        List<Stmt> traceStmts1 = CompileUtils.generateTPStmts(body, tp1, Collections.emptyList(),
+        List<Stmt> traceStmts1 = CompileUtils.generateTPStmtsOld(body, tp1, Collections.emptyList(),
                 false, null, uid + "_0");
         insts.addAll(traceStmts1);
-        List<Stmt> traceStmts2 = CompileUtils.generateTPStmts(body, tp2, Collections.emptyList(),
+        List<Stmt> traceStmts2 = CompileUtils.generateTPStmtsOld(body, tp2, Collections.emptyList(),
                 false, null, uid + "_1");
         insts.addAll(traceStmts2);
         System.out.println("---------");

@@ -181,7 +181,7 @@ public class DBInstrumentationPoint implements LumosInstrumentation {
         // List<Stmt> traceStmts = CompileUtils.generateTPStmts(body, objLocal,
         // Collections.emptyList(),
         // false, null, "WRITECONTEXT_" + field);
-        List<Stmt> traceStmts = CompileUtils.generateTPStmts(body, tmpMap, Collections.emptyList(),
+        List<Stmt> traceStmts = CompileUtils.generateTPStmtsOld(body, tmpMap, Collections.emptyList(),
                 false, stmt, uid);
         extracStmts.addAll(traceStmts);
         return extracStmts;

@@ -174,7 +174,7 @@ public class TracePoint implements LumosInstrumentation {
         Stmt stmt = getActualStmt();
         Value base = CompileUtils.findLocal(stmt, getVal());
         List<String> refs = getSuffix().stream().filter(x -> !x.isEmpty()).collect(Collectors.toList());
-        List<Stmt> inserts = CompileUtils.generateTPStmts(b, base, refs, false, stmt, getUid());
+        List<Stmt> inserts = CompileUtils.generateTPStmtsOld(b, base, refs, false, stmt, getUid());
         return inserts;
     }
 

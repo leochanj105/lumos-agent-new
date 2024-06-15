@@ -1,51 +1,98 @@
 package com.agent.inst;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
 
 import soot.Body;
+import soot.IntType;
+import soot.Local;
+import soot.PatchingChain;
+import soot.RefLikeType;
+import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
+import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
-import soot.jimple.InterfaceInvokeExpr;
+import soot.jimple.IdentityStmt;
+import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
-import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
-import soot.jimple.VirtualInvokeExpr;
 
 public class ValueRecordingInst extends LInst{
     public String type;
+    public String id;
     @Override
-    public void instrument(Body b) {
-        SootClass sysc = LumosAgent.findClassExact("java.lang.System");
-        if(stmt instanceof AssignStmt){
-            Value v = ((AssignStmt) stmt).getLeftOp();
+    public List<Stmt> instrument(Body b) {
+        SootClass sysc = Scene.v().getSootClass("java.lang.System");
+        PatchingChain<Unit> units = b.getUnits();
+        List<Stmt> stmts = new ArrayList<>();
+        Stmt stmt = getActualStmt(b);
+        // CompileUtils.setUpRR(b);
+        if (type.equals("vread")) {
+            Value v = null;
+            if (stmt instanceof AssignStmt) {
+                v = ((AssignStmt) stmt).getLeftOp();
+            }
+            else if(stmt instanceof IdentityStmt){
+                v = ((IdentityStmt) stmt).getLeftOp();
+            }
+            if(v==null){
+                System.out.println("&&"+stmt+"\n"+ this.stmt);
+                System.out.println(sm.getActiveBody());
+            }
             Type t = v.getType();
-            if(CompileUtils.isPrimitive(t)){
+            Value toRec = null;
+            if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
+                toRec = v;
+            } else {
+                SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
+                Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
+                Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, v));
+                stmts.add(astmt);
+                toRec = intLocal;
+            }
+            List<Stmt> logStmt = CompileUtils.generateLog(b, stmt, toRec, LumosAgent.logger,
+                    this.id + ":" + v);
+            stmts.addAll(logStmt);
+        } else if (type.equals("invoke")) {
+            InvokeExpr iexpr = stmt.getInvokeExpr();
+            if (iexpr != null) {
+                if (iexpr instanceof InstanceInvokeExpr) {
+                    // SootMethod timer = sysc.getMethod("long nanoTime()");
+                    SootClass objc = Scene.v().getSootClass("java.lang.Object");
+                    SootMethod getcm = objc.getMethod("java.lang.Class getClass()");
+                    Local classLocal = CompileUtils.getLocal(b, "classLocal", getcm.getReturnType());
+                    Stmt astmt = CompileUtils.assign(classLocal,
+                            CompileUtils.invokeV((Local) ((InstanceInvokeExpr) iexpr).getBase(), getcm));
+                    stmts.add(astmt);
+                    List<Stmt> logStmt = CompileUtils.generateLog(b, stmt, classLocal, LumosAgent.logger,
+                            this.id + ":CLASS");
+                    stmts.addAll(logStmt);
+                }
 
             }
-            else{
-                SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
-            }
         }
-        InvokeExpr iexpr = stmt.getInvokeExpr();
-        if(iexpr != null){
-            if(iexpr instanceof VirtualInvokeExpr ||
-                    iexpr instanceof InterfaceInvokeExpr ||
-                    iexpr instanceof SpecialInvokeExpr){
-                // SootMethod timer = sysc.getMethod("long nanoTime()");
-                SootClass objc = LumosAgent.findClassExact("java.lang.Object");
-                SootMethod getcm = objc.getMethod("java.lang.Class getClass()");
-            }
+        if (CompileUtils.isParamIdentity(stmt)) {
+            // if(body == null){System.out.println(sm+"\n"+stmt.hashCode());}
+            CompileUtils.insertAt(units, stmts, CompileUtils.firstStmt(b));
+        } else {
+            CompileUtils.insertAt(units, stmts, stmt);
         }
+        return stmts;
     }
 
-
-    public ValueRecordingInst(SootMethod sm, Stmt stmt, int lineNum, Value mayRecord, String type) {
-        super(sm, stmt, lineNum, mayRecord);
+    public ValueRecordingInst(SootMethod sm, String stmt, int lineNum, String type) {
+        super(sm, stmt, lineNum,null);
+        if(sm.getDeclaringClass().getName().equals("java.lang.Object")){
+            System.out.println("!!! " +toSummary());
+        }
         this.type = type;
+        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
     }
 
     @Override
@@ -71,6 +118,11 @@ public class ValueRecordingInst extends LInst{
         } else if (!type.equals(other.type))
             return false;
         return true;
+    }
+
+    @Override
+    public String getType() {
+        return type;
     }
 
 }

@@ -9,11 +9,11 @@
   <url>http://maven.apache.org</url>
 
 
-   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <hadoop.version>2.7.2</hadoop.version>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <hadoop.version>2.7.2</hadoop.version>
         <typesafe.config.version>1.2.1</typesafe.config.version>
         <protobuf.version>2.5.0</protobuf.version>
         <guava.version>19.0</guava.version>
@@ -27,11 +27,10 @@
         <junit.version>4.12</junit.version>
         <commons.logging.version>1.1</commons.logging.version>
         <scala.version>2.10.5</scala.version>
-
         <output.dir>dist</output.dir>
-  </properties>
+    </properties>
 
-  <dependencyManagement>
+    <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.scala-lang</groupId>
@@ -63,18 +62,7 @@
                 <artifactId>aspectjrt</artifactId>
                 <version>${aspectj.version}</version>
             </dependency>
-            
-            <!-- <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
 
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency> -->
 
             <dependency>
                 <groupId>commons-logging</groupId>
@@ -160,77 +148,57 @@
                 <artifactId>javassist</artifactId>
                 <version>${javassist.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>me.xdrop</groupId>
+                <artifactId>fuzzywuzzy</artifactId>
+                <version>1.4.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20230227</version>
+        </dependency>
 
-      <!-- <dependency>
-          <groupId>io.opentelemetry</groupId>
-          <artifactId>opentelemetry-api-trace</artifactId>
-          <version>0.13.1</version>
-      </dependency> -->
-
-    <dependency>
-	<groupId>org.json</groupId>
-	<artifactId>json</artifactId>
-	<version>20230227</version>
-    </dependency>
-
-    <dependency>
-        <groupId>javax.websocket</groupId>
-        <artifactId>javax.websocket-api</artifactId>
-        <version>1.1</version>
-    </dependency>
-    <dependency>
-        <groupId>org.glassfish.tyrus</groupId>
-        <artifactId>tyrus-container-jdk-client</artifactId>
-        <version>1.8.3</version>
-    </dependency>
-    <dependency>
-        <groupId>com.google.code.gson</groupId>
-        <artifactId>gson</artifactId>
-        <version>2.8.0</version>
-    </dependency>
-   	<dependency>
-	    <groupId>junit</groupId>
-	    <artifactId>junit</artifactId>
-	    <version>4.11</version>
-	    <scope>test</scope>
-	</dependency>
-	<dependency>
+        <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-api</artifactId>
+            <version>1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-container-jdk-client</artifactId>
+            <version>1.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.0</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
-    <dependency>
-	    <groupId>io.earcam.wrapped</groupId>
-	    <artifactId>com.sun.tools.attach</artifactId>
-	    <version>1.8.0_jdk8u131-b11</version>
-	</dependency>
-    <dependency>
-        <groupId>org.soot-oss</groupId>
-        <artifactId>soot</artifactId>
-        <version>4.5.0-SNAPSHOT</version>
-    </dependency>
-        <!-- <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.2.3</version>
+        <dependency>
+            <groupId>io.earcam.wrapped</groupId>
+            <artifactId>com.sun.tools.attach</artifactId>
+            <version>1.8.0_jdk8u131-b11</version>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>1.2.3</version>
-        </dependency> -->
-
-        <!-- <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
+            <groupId>org.soot-oss</groupId>
+            <artifactId>soot</artifactId>
+            <version>4.5.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-        </dependency> -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -255,14 +223,19 @@
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
         </dependency>
+        <dependency>
+            <groupId>me.xdrop</groupId>
+            <artifactId>fuzzywuzzy</artifactId>
+            <!-- <version>1.4.0</version> -->
+        </dependency>
         <!-- <dependency> -->
-            <!-- <groupId>sun.jdk</groupId> -->
-            <!-- <artifactId>tools</artifactId> -->
-            <!-- <version>1.5.0</version> -->
+        <!--     <groupId>com.lumos</groupId> -->
+        <!--     <artifactId>lumos-analyzer</artifactId> -->
+        <!--     <version>1.0-SNAPSHOT</version> -->
             <!-- <scope>system</scope> -->
-            <!-- <systemPath>${java.home}/../lib/tools.jar</systemPath> -->
+            <!-- <systemPath>/home/jingyuan/lumos/lumos-agent/target/LumosAgent-1.0-SNAPSHOT.jar</systemPath> -->
         <!-- </dependency> -->
-  </dependencies>
+    </dependencies>
     <repositories>
         <repository>
             <id>sonatype-snapshot</id>
@@ -275,28 +248,60 @@
             </snapshots>
         </repository>
     </repositories>
-   <build>
-      <plugins>
+    <build>
+        <plugins>
+
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <!-- <version>3.0.2</version> -->
-            <!-- <appendAssemblyId>false</appendAssemblyId> -->
-		    <configuration>
-                <finalName>LumosAgent</finalName>
-                <archive>
-                    <manifestEntries>
-                        <Premain-Class>com.agent.LumosAgent</Premain-Class>
-                        <Agent-Class>com.agent.LumosAgent</Agent-Class>
-                        <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                        <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                    </manifestEntries>
-                </archive>
-	          <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-	          </descriptorRefs>
-          </configuration>
-        </plugin>
-      </plugins>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>2.5.2</version>
+                <executions>
+                    <!-- <execution> -->
+                    <!--     <id>install-analyzer</id> -->
+                    <!--     <phase>clean</phase> -->
+                    <!--     <configuration> -->
+                    <!--         <file>/home/jingyuan/lumos/lumos-analyzer/target/LumosAnalyzer-jar-with-dependencies.jar</file> -->
+                    <!--         <repositoryLayout>default</repositoryLayout> -->
+                    <!--         <groupId>com.lumos</groupId> -->
+                    <!--         <artifactId>lumos-analyzer</artifactId> -->
+                    <!--         <version>1.0-SNAPSHOT</version> -->
+                    <!--         <packaging>jar</packaging> -->
+                    <!--         <generatePom>true</generatePom> -->
+                    <!--     </configuration> -->
+                    <!--     <goals> -->
+                    <!--         <goal>install-file</goal> -->
+                    <!--     </goals> -->
+                    <!-- </execution> -->
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <!-- <appendAssemblyId>false</appendAssemblyId> -->
+                <configuration>
+                    <finalName>LumosAgent</finalName>
+                    <archive>
+                        <manifestEntries>
+                            <Premain-Class>com.agent.LumosAgent</Premain-Class>
+                            <Agent-Class>com.agent.LumosAgent</Agent-Class>
+                            <Can-Redefine-Classes>true</Can-Redefine-Classes>
+                            <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                        </manifestEntries>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>

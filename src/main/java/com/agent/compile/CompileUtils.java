@@ -1,16 +1,26 @@
 package com.agent.compile;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.agent.LumosAgent;
+
+import me.xdrop.fuzzywuzzy.FuzzySearch;
 
 // import com.lumos.App;
 // import com.lumos.forward.ContextSensitiveValue;
@@ -18,6 +28,7 @@ import com.agent.LumosAgent;
 
 // import jas.StringCP;
 import soot.Body;
+import soot.BooleanType;
 import soot.Local;
 import soot.PatchingChain;
 import soot.Printer;
@@ -32,10 +43,14 @@ import soot.Value;
 import soot.ValueBox;
 import soot.baf.BafASMBackend;
 import soot.jimple.AssignStmt;
+import soot.jimple.CaughtExceptionRef;
 import soot.jimple.Constant;
+import soot.jimple.FieldRef;
 import soot.jimple.GotoStmt;
+import soot.jimple.IdentityStmt;
 import soot.jimple.IfStmt;
 import soot.jimple.IntConstant;
+import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.Jimple;
 import soot.jimple.JimpleBody;
@@ -43,6 +58,8 @@ import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
 import soot.jimple.internal.JInstanceFieldRef;
+import soot.jimple.internal.JReturnStmt;
+import soot.jimple.internal.JReturnVoidStmt;
 import soot.toolkits.graph.BriefUnitGraph;
 
 public class CompileUtils {
@@ -52,6 +69,48 @@ public class CompileUtils {
     public static Set<String> primitiveNames = new HashSet<>(
      Arrays.asList(new String[] { "Byte", "Double", "Float", "Integer",
               "Long", "Char", "Boolean", "Short", "String" }));
+
+    public static Map<Body, Stmt> firstStmts = new ConcurrentHashMap<>();
+    public static List<String> readFrom(String file) {
+        List<String> list = new ArrayList<>();
+        FileInputStream fstream;
+        try {
+            fstream = new FileInputStream(file);
+            // Get the object of DataInputStream
+            DataInputStream in = new DataInputStream(fstream);
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+
+            String strLine;
+            // Read File Line By Line
+            while ((strLine = br.readLine()) != null) {
+                list.add(strLine);
+            }
+            in.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public static List<Stmt> getReturnStmts(Body b) {
+        List<Stmt> rets = new ArrayList<>();
+        for (Unit unit : b.getUnits()) {
+            Stmt stmt = (Stmt) unit;
+            if ((stmt instanceof JReturnStmt) || (stmt instanceof JReturnVoidStmt)) {
+                rets.add(stmt);
+            }
+        }
+        return rets;
+    }
+
+    public static String trimSlash(String str) {
+        if (str.length() > 0 && str.charAt(str.length() - 1) == '/') {
+            return str.substring(0, str.length() - 1);
+        }
+        return str;
+    }
     public static String trim(String fn) {
         return fn.substring(fn.lastIndexOf('.') + 1);
     }
@@ -59,18 +118,45 @@ public class CompileUtils {
     public static boolean isPrimitive(Type t){
         return primitiveNames.contains(trim(t.toString()));
     }
-    public static void insertAt(PatchingChain<Unit> units, Stmt target, Stmt toinsert, boolean before) {
+
+    // public static void insertBeforeR(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target){
+    //     insertBefore(units,
+    // }
+
+    public static void insertAt(PatchingChain<Unit> units, Stmt toinsert, Stmt target) {
+        insertAt(units, toinsert, target, false);
+    }
+
+    public static void insertAt(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target) {
+        insertAt(units, toinsert, target, false);
+    }
+    public static void insertAt(PatchingChain<Unit> units, Stmt toinsert, Stmt target, boolean before) {
         if (before) {
-            units.insertBefore(toinsert, target);
+            // List<UnitBox> oldUnits = new ArrayList<>(target.getBoxesPointingToThis());
+            // for(UnitBox ub : oldUnits){
+            //     target.removeBoxPointingToThis(ub);
+            // }
+            // units.in
+            units.insertBeforeNoRedirect(toinsert, target);
+            // for(UnitBox ub : oldUnits){
+            //     target.addBoxPointingToThis(ub);
+            // }
         } else {
             units.insertAfter(toinsert, target);
         }
-        // body.validate();
     }
-
-    public static void insertAt(PatchingChain<Unit> units, Stmt target, List<Stmt> toinsert, boolean before) {
+    
+    public static void insertAt(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target, boolean before) {
         if (before) {
-            units.insertBefore(toinsert, target);
+            // List<UnitBox> oldUnits = new ArrayList<>(target.getBoxesPointingToThis());
+            // for(UnitBox ub : oldUnits){
+            //     target.removeBoxPointingToThis(ub);
+            // }
+            List<Unit> insUnits = new ArrayList<>(toinsert);
+            units.insertBeforeNoRedirect(insUnits, target);
+            // for(UnitBox ub : oldUnits){
+            //     target.addBoxPointingToThis(ub);
+            // }
         } else {
             units.insertAfter(toinsert, target);
         }
@@ -97,8 +183,30 @@ public class CompileUtils {
         insts.add(gotoStmt);
         return insts;
     }
+    public static List<Stmt> generateInitRRField(Body body, String field){
+        List<Stmt> insts = new ArrayList<>();
+        FieldRef fr = sref(field);
+        Local vlocal = getLocal(body, "rrLocal", fr.getType());
+        insts.add(assign(vlocal, NEW("java.lang.ThreadLocal")));
+        SootMethod init =  getMethod("java.lang.ThreadLocal", "void <init>()");
+        insts.add(call(invokeS(vlocal,init)));
+        insts.add(assign(sref(field), vlocal));
+        return insts;
+    }
 
-    public static List<Stmt> generateInit(Body body, String member) {
+    public static List<Stmt> generateRRtoggle(Body body, String field, boolean isOn){
+        List<Stmt> insts = new ArrayList<>();
+        FieldRef fr = sref(field);
+        Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
+        Local vlocal = getLocal(body, "rrLocal", fr.getType());
+        Value v = isOn? sref("<java.lang.Boolean: java.lang.Boolean TRUE>") : NullConstant.v();
+        insts.add(assign(objLocal, v));
+        insts.add(assign(vlocal, sref(field)));
+        SootMethod setm = getMethod("java.lang.ThreadLocal", "void set(java.lang.Object)");
+        insts.add(call(invokeV(vlocal, setm, objLocal)));
+        return insts;
+    }
+    public static List<Stmt> generateInitOld(Body body, String member) {
         List<Stmt> insts = new ArrayList<>();
         SootClass sclass = body.getMethod().getDeclaringClass();
         SootField sf = null;
@@ -250,12 +358,216 @@ public class CompileUtils {
         return insts;
     }
 
-    public static List<Stmt> generateTPStmts(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori,
+    public static Stmt firstStmt(Body b){
+        if(LumosAgent.entryMethods.contains(b.getMethod())){
+            Stmt stmt = searchStmt(b, "nop", -1);
+            if(stmt!=null){
+                return stmt;
+            }
+        }
+        Stmt first = firstStmts.get(b);
+        if(first == null){
+            Stmt tmp = ((JimpleBody) b).getFirstNonIdentityStmt();
+            first = Jimple.v().newNopStmt();
+
+            // if(b.getUnits().getNonPatchingChain().contains(first)){
+            //     System.out.println("!!! " + first);
+            // }
+            insertAt(b.getUnits(), first, tmp, true);
+            firstStmts.put(b,first);
+
+            // System.out.println(first.getBoxesPointingToThis());
+        }
+        return first;
+    }
+    public static boolean isParamIdentity(Stmt stmt){
+        return stmt instanceof IdentityStmt &&
+                !(((IdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef);
+    }
+
+    public static List<Stmt> generateLog(Body body, Stmt stmt, Value v, String logger, String tag){
+        SootMethod logMethod = null;
+        Local tmpString1 = getLocal(body, "tmpString1", RefType.v("java.lang.String"));
+        Local tmpString2 = getLocal(body, "tmpString2", RefType.v("java.lang.String"));
+        SootMethod concatMethod = getMethod("java.lang.String", "java.lang.String concat(java.lang.String)");
+        StringConstant fmtString = null;
+
+        Local loggerLocal = findLocal(body, "loggerLocal");
+        
+        if (logger.equals("stdout")) {
+            fmtString = StringConstant.v("[" + tag + "]=");
+            logMethod = getMethod("java.io.PrintStream", "void println(java.lang.String)");
+        } else if (logger.equals("xtrace")) {
+            fmtString = StringConstant.v("[" + tag + "]=");
+        }
+
+        Local bLocal = getLocal(body, "bLocal", BooleanType.v());
+        if (loggerLocal == null) {
+            List<Stmt> initStmts = new ArrayList<>();
+            // bLocal = getLocal(body, "bLocal", BooleanType.v());
+            // Local booleanLocal = getLocal(b, "booleanLocal", "java.lang.Boolean");
+            Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
+            Local tlLocal = getLocal(body, "tlLocal", "java.lang.ThreadLocal");
+
+            loggerLocal = getLocal(body, "loggerLocal", "java.io.PrintStream");
+            Stmt assignLogger = assign(loggerLocal,
+                    sref("<java.lang.System: java.io.PrintStream out>"));
+            try{
+                insertAt(body.getUnits(), assignLogger, firstStmt(body), true);
+            }
+            catch(Exception e){
+                //System.out.println(assignLogger);
+                System.out.println(body);
+            }
+            initStmts.add(assign(tlLocal, sref(LumosAgent.getRRField())));
+            SootMethod gm = getMethod("java.lang.ThreadLocal", "java.lang.Object get()");
+            initStmts.add(assign(objLocal, invokeV(tlLocal, gm)));
+            Stmt assignT = assign(bLocal, IntConstant.v(1));
+            Stmt assignF = assign(bLocal, IntConstant.v(0));
+            Stmt jump = GOTO(firstStmt(body));
+            initStmts.add(IF(EQ(objLocal, NullConstant.v()), assignF));
+            initStmts.add(assignT);
+            initStmts.add(jump);
+            initStmts.add(assignF);
+            body.getUnits().insertAfter(initStmts, assignLogger);
+        } else if (logger.equals("xtrace")) {
+            fmtString = StringConstant.v("[" + tag + "]=");
+            // logMethod = getMethod("java.io.PrintStream", "java.io.PrintStream
+            // printf(java.lang.String,java.lang.Object[])");
+        }
+        
+        List<Stmt> stlist = new ArrayList<>();
+        Stmt succ = null;
+        if(isParamIdentity(stmt)){ 
+            succ = (Stmt)((JimpleBody)body).getUnits().getSuccOf(firstStmt(body));
+        }
+        else{
+            succ = (Stmt)((JimpleBody)body).getUnits().getSuccOf(stmt);
+        }
+        Local tlLocal = getLocal(body, "tlLocal", "java.lang.ThreadLocal");
+        Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
+        Local nullLocal = getLocal(body, "nullLocal", "java.lang.Object");
+        // test if recording is on
+        // bLocal == true
+        //
+        IfStmt ifs = IF(EQ(bLocal, IntConstant.v(0)), succ);
+        stlist.add(ifs);
+        SootMethod setm = getMethod("java.lang.ThreadLocal", "void set(java.lang.Object)");
+        // turn off recording
+        
+        stlist.add(assign(nullLocal, NullConstant.v()));
+        stlist.add(call(invokeV(tlLocal, setm, nullLocal)));
+        stlist.add(assign(tmpString1, fmtString));
+        stlist.add(assign(tmpString2, invoke(getValueOfMethod(v), v)));
+        stlist.add(assign(tmpString1, invokeV(tmpString1, concatMethod, tmpString2)));
+        if (logger.equals("stdout")) {
+            stlist.add(call(invokeV(loggerLocal, logMethod, tmpString1)));
+        }
+        // turn on recording 
+        // stlist.add(assign(objLocal, sref("<java.lang.Boolean: java.lang.Boolean TRUE>")));
+        stlist.add(call(invokeV(tlLocal, setm, objLocal)));
+
+        return stlist;
+    }
+    public static Stmt call(InvokeExpr expr){
+        return Jimple.v().newInvokeStmt(expr);
+    }
+    public static Local getLoggerLocal(Body body, String logger){
+        Local loggerLocal = findLocal(body, "loggerLocal");
+        PatchingChain<Unit> units = body.getUnits();
+        if (loggerLocal == null) {
+            if (logger.equals("stdout")) {
+                loggerLocal = getLocal(body, "loggerLocal", RefType.v("java.io.PrintStream"));
+                units.insertBefore(assign(
+                        loggerLocal, sref("<java.lang.System: java.io.PrintStream out>")),
+                        ((JimpleBody) body).getFirstNonIdentityStmt());
+            }
+        }
+        return loggerLocal;
+    }
+    // public static Stmt IF)assign
+    //
+
+    public static Value NEW(String sc){
+        return NEW(Scene.v().getSootClass(sc));
+    }
+    public static Value NEW(SootClass sc){
+        return Jimple.v().newNewExpr(RefType.v(sc));
+    }
+
+    public static GotoStmt GOTO(Stmt stmt){
+        return Jimple.v().newGotoStmt(stmt);
+    }
+    public static IfStmt IF(Value condition, Stmt target){
+        return Jimple.v().newIfStmt(condition, target);
+    }
+    public static Value NEQ(Value x, Value y){
+        return Jimple.v().newNeExpr(x, y);
+    }
+    public static Value EQ(Value x, Value y){
+        return Jimple.v().newEqExpr(x, y);
+    }
+    public static Value CAST(Local src, Type t){
+        return Jimple.v().newCastExpr(src, t);
+    }
+    public static FieldRef sref(String field){
+        FieldRef fref = null;
+        // try{
+            fref = sref(Scene.v().getField(field));
+        // }
+        // catch(Exception e){
+        //     System.out.println(Scene.v().getSootClass("com.agent.Global").getFields());
+        //     throw new RuntimeException();
+        // }
+        return fref;
+    }
+    public static FieldRef sref(SootField sf){
+        return Jimple.v().newStaticFieldRef(sf.makeRef());
+    }
+
+    public static Value iref(Local base, String field){
+        return iref(base, Scene.v().getField(field));
+    }
+
+    public static Value iref(Local base, SootField sf){
+        return Jimple.v().newInstanceFieldRef(base, sf.makeRef());
+    }
+    public static Stmt assign(Value lop, Value rop){
+        return Jimple.v().newAssignStmt(lop, rop);
+    }
+    public static InvokeExpr invoke(SootMethod sm, Value...args){
+        if (args.length > 0) {
+            return Jimple.v().newStaticInvokeExpr(sm.makeRef(), Arrays.asList(args));
+        } else {
+            return Jimple.v().newStaticInvokeExpr(sm.makeRef());
+        }
+    }
+    public static InvokeExpr invokeI(Local base, SootMethod sm, Value...args){
+        if (args.length > 0) {
+            return Jimple.v().newInterfaceInvokeExpr(base, sm.makeRef(), Arrays.asList(args));
+        } else {
+            return Jimple.v().newInterfaceInvokeExpr(base, sm.makeRef());
+        }
+    }
+    public static InvokeExpr invokeS(Local base, SootMethod sm, Value ...args){
+        if (args.length > 0) {
+            return Jimple.v().newSpecialInvokeExpr(base, sm.makeRef(), Arrays.asList(args));
+        } else {
+            return Jimple.v().newSpecialInvokeExpr(base, sm.makeRef());
+        }
+    }
+    public static InvokeExpr invokeV(Local base, SootMethod sm, Value ...args){
+        if (args.length > 0) {
+            return Jimple.v().newVirtualInvokeExpr(base, sm.makeRef(), Arrays.asList(args));
+        } else {
+            return Jimple.v().newVirtualInvokeExpr(base, sm.makeRef());
+        }
+    }
+    public static List<Stmt> generateTPStmtsOld(Body body, Value v, List<String> suffix, boolean isPrint, Stmt stori,
             String name) {
         Local tpLocal = findLocal(body, "tpLocal");
         PatchingChain<Unit> units = body.getUnits();
         if (tpLocal == null) {
-            // tpLocal = Jimple.v().newLocal("tpLocal", RefType.v("java.io.PrintStream"));
             if (isPrint) {
                 tpLocal = getLocal(body, "tpLocal", RefType.v("java.io.PrintStream"));
                 units.insertBefore(Jimple.v().newAssignStmt(
@@ -268,7 +580,7 @@ public class CompileUtils {
                 SootMethod currMethod = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                         "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
                 units.insertBefore(
-                        Jimple.v().newAssignStmt(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
+                        assign(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
                         ((JimpleBody) body).getFirstNonIdentityStmt());
             }
         }
@@ -437,15 +749,28 @@ public class CompileUtils {
         return local;
     }
 
-    public static Stmt searchStmt(Body b, String stmtStr, int linenum) {
+    public static Local getLocal(Body body, String name, SootClass sc) {
+        return getLocal(body, name, RefType.v(sc));
+    }
 
+    public static Local getLocal(Body body, String name, String sc) {
+        return getLocal(body, name, Scene.v().getSootClass(sc));
+    }
+
+    public static Stmt searchStmt(Body b, String stmtStr, int linenum) {
+        // Errrr! Soot has a but that some variable names occasionally
+        // are not the same between runs despite turning on
+        // stabilize_local_names. Using this fuzzy match as a workaround
         for (Unit unit : b.getUnits()) {
             Stmt stmt = (Stmt) unit;
             boolean stmtMatched = stmt.toString().equals(stmtStr);
+            
             boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
-            // }
-            if (stmtMatched && lineMatch) {
-                return stmt;
+            if (lineMatch) {
+                if(stmtMatched || 
+                        (FuzzySearch.ratio(stmt.toString(), stmtStr)>90 && !(stmt.toString().contains("goto")))){
+                    return stmt;
+                }
             }
         }
         if (stmtStr.contains("if") && stmtStr.contains("(branch)")) {
@@ -459,7 +784,7 @@ public class CompileUtils {
                 }
             }
         }
-        System.out.println("!!! " + stmtStr);
+        // System.out.println("!!! " + stmtStr);
         return null;
     }
 
@@ -483,23 +808,25 @@ public class CompileUtils {
 
     private static SootMethod getValueOfMethod(Value value) {
         SootMethod toCall;
-        if (value.getType().toString().equals("int")) {
+        String tstr = value.getType().toString();
+        if (tstr.equals("int") || tstr.equals("short")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(int)");
-        } else if (value.getType().toString().equals("byte")) {
+        } else if (tstr.equals("byte")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(int)");
-        } else if (value.getType().toString().equals("float")) {
+        } else if (tstr.equals("float")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(float)");
-        } else if (value.getType().toString().equals("double")) {
+        } else if (tstr.equals("double")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(double)");
-        } else if (value.getType().toString().equals("boolean")) {
+        } else if (tstr.equals("boolean")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(boolean)");
-        } else if (value.getType().toString().equals("char")) {
+        } else if (tstr.equals("char")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(char)");
-        } else if (value.getType().toString().equals("char[]")) {
+        } else if (tstr.equals("char[]")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(char[])");
-        } else if (value.getType().toString().equals("long")) {
+        } else if (tstr.equals("long")) {
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(long)");
         } else {
+            // System.out.println("! " + value +", " + value.getType());
             toCall = Scene.v().getSootClass("java.lang.String").getMethod("java.lang.String valueOf(java.lang.Object)");
         }
         return toCall;
@@ -512,7 +839,9 @@ public class CompileUtils {
             BafASMBackend backend = new BafASMBackend(cl, 52);
             backend.generateClassFile(bstream);
         } catch (Exception e) {
+            // System.out.println(cl);
             e.printStackTrace();
+            // throw new RuntimeException();
         }
         return bstream.toByteArray();
     }

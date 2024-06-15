@@ -1,6 +1,7 @@
 package com.agent;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
@@ -9,11 +10,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarFile;
 
 import com.agent.compile.CompileUtils;
+import com.agent.inst.ConcurrencyInst;
+import com.agent.inst.LInst;
 
 import soot.Body;
 import soot.G;
@@ -22,7 +28,9 @@ import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.Type;
 import soot.Unit;
+import soot.jimple.JimpleBody;
 import soot.jimple.Stmt;
 import soot.options.Options;
 import tracing.LumosInstrumentation;
@@ -38,20 +46,26 @@ public class LumosAgent {
     // public Agent(ClassLoader loader){
     // this.loader = loader;
     // }
-
     public static boolean playGroundFlag = false;
     public static ClassLoader cloader = null;
     public static boolean analyzeReady = false;
-    public static Map<String, SootMethod> methodMap = new HashMap<>();
-    public static Map<String, SootClass> classMap = new HashMap<>();
-    public static Map<String, Body> bodyMap = new HashMap<>();
+    public static Map<String, SootMethod> methodMap = new ConcurrentHashMap<>();
+    public static Map<String, SootClass> classMap = new ConcurrentHashMap<>();
+    public static Map<String, Body> bodyMap = new ConcurrentHashMap<>();
 
     public static Set<LumosInstrumentation> allTPs = new HashSet<>();
-    public static HashMap<String, Set<LumosInstrumentation>> methodTPMap = new HashMap<>();
-
+    public static Set<LInst> allInsts = new HashSet<>();
+    public static Map<String, Set<LumosInstrumentation>> methodTPMap = new HashMap<>();
+    public static Map<String, Set<LInst>> activeInsts = new HashMap<>();
     // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
     // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
-
+    public static String logger = "stdout";
+    // public static String rrClass = "com.mycompany.app.App";
+    
+    public static Set<SootMethod> entryMethods = new HashSet<>();
+    public static Set<String> entryClasses = new HashSet<>();
+    public static String rrClass = "com.agent.Global";
+    
     public static byte[] forTest;
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
@@ -69,7 +83,31 @@ public class LumosAgent {
     public static boolean ORMContextOn =false;
     public static boolean SOInjectOn =false;
     public static boolean TPInstOn =false;
+    public static List<Thread> buildTasks = new ArrayList<>();
+    public static void taskSync(){
+        for(Thread t: buildTasks){
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        buildTasks.clear();
+    }
 
+    public static Thread getTaskThread(Runnable r) {
+        Thread t = new Thread(r);
+        t.start();
+        return t;
+    }
+
+    public static void addTask(Runnable r) {
+        Thread t = getTaskThread(r);
+        buildTasks.add(t);
+    }
+    public static String getRRField(){
+        return "<"+rrClass+": java.lang.ThreadLocal rrOn>";
+    }
     public static boolean checkORMClass(String clsname) {
         return false;
         // return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") ||
@@ -82,26 +120,13 @@ public class LumosAgent {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
-
-        // ClassPool classPool = ClassPool.getDefault();
-        // classPool.appendClassPath(new
-        // LoaderClassPath(Thread.currentThread().getContextClassLoader()));
-        // System.out.println("[XXXX] " + classPool);
-        /*
-        String empty = System.getProperty("empty");
-        if (empty != null && empty.contains("true")) {
-            p("empty config -- turning orm and otlp off");
-            allOn = false;
+        JarFile jarFile = null;
+        try {
+            jarFile = new JarFile("/tmp/Global.jar");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-
-        String orm = System.getProperty("orm");
-        if (empty != null && empty.contains("false")) {
-            p("no orm");
-            ORMContextOn = false;
-        }
-        */
-        // setupSoot(cpath);
-        // analyzePath(cpath);
+        inst.appendToBootstrapClassLoaderSearch(jarFile);
         inst.addTransformer(new ClassFileTransformer() {
             @Override
             public byte[] transform(
@@ -117,74 +142,30 @@ public class LumosAgent {
                     if (LumosAgent.cloader == null) {
                         System.out.println("Hooked " + loader);
                         LumosAgent.cloader = loader;
-                        // System.out.println(LumosAgent.cloader);
-                    }
-                    // if (!ORMContextOn) {
-                    // return classFileBuffer;
-                    // }
-                    // String targetName = "order.domain.Order";
-                    // String actualName = targetName.replace('.', File.separatorChar);
-
-                    // if(className.contains("domain/Order")){
-                    // System.out.println(className + ", " + loader.getClass());
-                    // System.out.println(actualName);
-                    // }
-
-                    String targetName = className.replace(File.separatorChar, '.');
-                    if (checkORMClass(targetName)) {
-                        // System.out.println("className: " + className);
-
-                        SootClass sclass = null;
-                        // while(sclass == null){
-                        sclass = findClassExact(targetName);
-                        // }
-                        if (sclass == null) {
-                            System.out.println("Cannot find " + targetName);
-                            classMap.forEach((k, v) -> {
-                                System.out.println("--" + k);
-                            });
-                        }
-
-                        // byte[] cbuffer = addFieldToClass(sclass, "java.lang.String", "LumosContext");
-                        // addFieldToClass(sclass, "java.util.HashMap", "LumosContext");
-                        if (ORMContextOn) {
-                            System.out.println("target: " + targetName);
-                            System.out.println("adding to " + className);
-                            addFieldToClass(sclass, "java.lang.String", "LumosContext");
-                        }
-                        /*
-                         * for(SootMethod method: sclass.getMethods()){
-                         * if(method.getName().contains("<init>")){
-                         * Body b = findBodyNoClone(method.toString());
-                         * System.out.println(method);
-                         * if(b !=null){
-                         * List<Stmt> initStmts = CompileUtils.generateInit(b, "LumosContext");
-                         * CompileUtils.insertAt(b.getUnits(), ((JimpleBody)
-                         * b).getFirstNonIdentityStmt(), initStmts, true);
-                         * 
-                         * initStmts.forEach(stmt->{System.out.println(stmt);});
-                         * 
-                         * System.out.println("Inserted for " + method);
-                         * method.setActiveBody(b);
-                         * }
-                         * }
-                         * }
-                         */
-                        byte[] cbuffer = CompileUtils.compileClass(sclass);
-
-                        System.out.println("added to " + className);
-                        playGroundFlag = true;
-                        return cbuffer;
                     }
                 }
+                String targetName = className.replace(File.separatorChar, '.');
+                if (entryClasses.contains(targetName)) {
+                    while(!analyzeReady){
+                        AgentThread.sleep(500);
+                    }
 
+                    SootClass entryClass = Scene.v().getSootClass(targetName);
+                    return CompileUtils.compileClass(entryClass);
+                }
                 return classFileBuffer;
             }
         });
         // play();
-
-        Thread thread = new Thread(new AgentThread(inst));
+        AgentThread t = new AgentThread(inst);
+        Thread thread = new Thread(t);
         thread.start();
+        
+        long maxMemory = Runtime.getRuntime().maxMemory();
+        System.out.println("Maximum memory (bytes): " +
+                (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
+        // tplay();
+        // t.refreshInsts();
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
@@ -192,11 +173,28 @@ public class LumosAgent {
         thread.start();
     }
 
-    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname) {
-        sclass.addField(Scene.v().makeSootField(fieldname, RefType.v(type), soot.Modifier.PUBLIC));
+    public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname) {
+        return addFieldToClass(sclass, fieldname, fieldname, false);
+    }
+
+    public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname, boolean isStatic) {
+        int mod = soot.Modifier.PUBLIC;
+        if(isStatic){
+            mod |= soot.Modifier.STATIC;
+        }
+        sclass.addField(Scene.v().makeSootField(fieldname, type, mod));
         byte[] bytecode = CompileUtils.compileClass(sclass);
         return bytecode;
     }
+
+    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname) {
+        return addFieldToClass(sclass, RefType.v(type), fieldname, false);
+    }
+
+    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname, boolean isStatic) {
+        return addFieldToClass(sclass, RefType.v(type), fieldname, isStatic);
+    }
+
 
     public static Map<String, byte[]> addField(String classname, String type, String fieldname) {
         Map<String, byte[]> cmap = new HashMap<>();
@@ -277,8 +275,8 @@ public class LumosAgent {
 
         Options.v().set_process_dir(pdir);
 
-        Options.v().set_no_bodies_for_excluded(true);
-        Options.v().set_print_tags_in_output(true);
+        // Options.v().set_no_bodies_for_excluded(true);
+        // Options.v().set_print_tags_in_output(true);
 
         // Use original names
         Options.v().setPhaseOption("jb", "optimize:false");
@@ -286,7 +284,7 @@ public class LumosAgent {
         Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
         Options.v().setPhaseOption("jb", "stabilize-local-names:true");
         // Need this to avoid the need to provide an entry point
-        Options.v().setPhaseOption("cg", "all-reachable:true");
+        // Options.v().setPhaseOption("cg", "all-reachable:true");
 
         // Need this to include all subtypes
         // Options.v().setPhaseOption("cg", "library:any-subtype");
@@ -299,12 +297,14 @@ public class LumosAgent {
             Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
                     SootClass.SIGNATURES);
         }
+        Scene.v().loadBasicClasses();
         // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
         // SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
     }
-    public static void setExcludes(){
-        String[] exClasses = {"org.apache.hadoop.ant.*",
+
+    public static void setExcludes() {
+        String[] exClasses = { "org.apache.hadoop.ant.*",
                 "org.apache.hadoop.record.*", "org.apache.hadoop.metrics.*",
                 "org.apache.hadoop.log.*",
                 "org.apache.hadoop.metrics2.*",
@@ -312,29 +312,60 @@ public class LumosAgent {
                 "org.apache.hadoop.http.*",
                 "org.apache.hadoop.hdfs.web.*",
                 "org.apache.hadoop.hdfs.server.datanode.*",
-                "org.apache.hadoop.fs.shell.*"};
+                "org.apache.hadoop.fs.shell.*" };
         List<String> excludePackagesList = Arrays.asList(exClasses);
         Options.v().set_exclude(excludePackagesList);
         Options.v().set_no_bodies_for_excluded(true);
         Options.v().set_print_tags_in_output(true);
     }
-    public static void setIncludes(){
+
+    public static void setIncludes() {
         includeList = new ArrayList<String>();
+        // includeList.add("java.lang.*");
         includeList.add("java.lang.*");
         includeList.add("java.util.*");
         Options.v().set_include(includeList);
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
-        Scene.v().addBasicClass("java.lang.Map", SootClass.SIGNATURES);
-        Scene.v().addBasicClass("java.lang.HashMap", SootClass.SIGNATURES);
-        Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
+        // Scene.v().addBasicClass("java.lang.Map", SootClass.SIGNATURES);
+        // Scene.v().addBasicClass("java.lang.HashMap", SootClass.SIGNATURES);
+        // Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.Object", SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
     }
 
     public static void p(String s) {
         System.out.println(s);
+    }
+
+    public static void setupClass(String service) {
+        p("setting up class...");
+        for (Iterator<SootClass> iter = Scene.v().getApplicationClasses().snapshotIterator(); iter
+                .hasNext();) {
+            SootClass cls = iter.next();
+            List<SootMethod> sms = cls.getMethods();
+            for (SootMethod sm : sms) {
+                if (sm.isAbstract() || sm.isNative()) {
+                    continue;
+                }
+                sm.retrieveActiveBody();
+                // if(cls.getName().contains("App")){
+                //     p("## " + sm+":\n"+sm.getActiveBody());
+                // }
+                // addTask(new Runnable() {
+                    // @Override
+                // public void run() {
+                methodMap.put(sm.getSignature(), sm);
+                bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
+                // }
+                // });
+            }
+            classMap.put(cls.toString(), cls);
+        }
+        // taskSync();
+        p("----Analysis Done------");
+        analyzeReady = true;
     }
 
     public static void analyzePath(String path) {
@@ -353,14 +384,12 @@ public class LumosAgent {
                 }
                 sm.retrieveActiveBody();
                 methodMap.put(sm.getSignature(), sm);
-                bodyMap.put(sm.getSignature(), ((Body) sm.getActiveBody().clone()));
+                bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
             }
             classMap.put(cls.toString(), cls);
             // CompileUtils.outputJimple(cls, "AAA");
 
         }
-        p("----Analysis Done------");
-        analyzeReady = true;
         // p("analyzeReady: " + analyzeReady);
     }
 
@@ -425,30 +454,163 @@ public class LumosAgent {
         return null;
     }
 
+    public static void addEntryMethods(){
+        // Global.addEntryMethods();
+        // LumosAgent.entryMethods = Global.entryMethods;
+        LumosAgent.entryMethods.add(Scene.v().getSootClass("com.mycompany.app.Work").getMethodByName("work"));
+        p(entryMethods+"");
+        for(SootMethod sm : entryMethods){
+            entryClasses.add(sm.getDeclaringClass().getName());
+        }
+
+        for (SootMethod toggleM : entryMethods) {
+            p("adding to " + toggleM.getName());
+            Body b = findBodyNoClone(toggleM.toString());
+            List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
+            CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
+            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
+                b.getUnits().insertBefore(stmts, ret);
+            }
+            toggleM.setActiveBody(b);
+        }
+    }
+    public static void turnOnRR(){
+    }
     public static void tplay() {
-        String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
-        List<String> cpaths = new ArrayList<String>();
-        List<String> apaths = new ArrayList<String>();
-        cpaths.add(testPath);
-        apaths.addAll(cpaths);
-        setupSoot(cpaths, apaths);
+        addEntryMethods();
+        // turnOnRR();
+        p("----Analysis Done------");
+        analyzeReady = true;
+        readInsts();
         // analyzePath(cpath);
     }
-    public static void play() {
-        // setupSoot(cpath);
-        // analyzePath(cpath);
 
-        // String methodName = "sendInsidePayment";
-        // String valueName = "$stack29";
-        // String stmtString = "$stack29 = virtualinvoke $stack28.<java.lang.Boolean:
-        // boolean booleanValue()>()";
+    public static void readInsts() {
+        p("reading inst files...");
+        for (String s : CompileUtils.readFrom("/home/jingyuan/lumos/inst")) {
+            LInst inst = LInst.fromSummary(s);
+            activate(inst);
+        }
+    }
 
-        // TracePoint tp = new TracePoint("11", methodName, stmtString, 103, valueName);
-        // addTP(tp);
-        // instrument();
+    public static void activate(LInst inst) {
+        if (allInsts.contains(inst)) {
+            return;
+        }
+        allInsts.add(inst);
+        activeInsts.computeIfAbsent(inst.sm.toString(),
+                e -> new HashSet<>()).add(inst);
     }
 
     public static Map<String, byte[]> instrument() {
+        Map<String, byte[]> cmap = new ConcurrentHashMap<>();
+        Set<SootClass> scToCompile = new HashSet<>();
+        for (String smstr : activeInsts.keySet()) {
+
+            SootMethod sm = Scene.v().getMethod(smstr);
+            SootClass sclass = findClass(sm.getDeclaringClass().getName());
+
+            // if(!sclass.getName().contains("mycompany.app.")){ continue;}
+            List<Stmt> targetstmts = new ArrayList<>();
+            List<LInst> targetInsts = new ArrayList<>();
+
+            Body b = findBody(smstr);
+            // p("?? " + b);
+            addTask(new Runnable(){
+                @Override
+                public void run() {
+                    // This two-step way is needed to avoid inserted stmts
+                    // from breaking the labeling
+                    for (LInst inst : activeInsts.get(smstr)) {
+                        // inst.body = b;
+                        Stmt stmt = inst.getActualStmt(b);
+                        targetstmts.add(stmt);
+                        targetInsts.add(inst);
+                    }
+
+                    for (int i = 0; i < targetstmts.size(); i++) {
+                        // Stmt stmt = targetstmts.get(i);
+                        LInst inst = targetInsts.get(i);
+                        if (!(inst instanceof ConcurrencyInst)) {
+                            // if(!sclass.getName().contains("app.App")){
+                            inst.instrument(b);
+                            // }
+
+                            try {
+                                b.validate();
+                            } catch (Exception e) {
+                                p(b+"");
+                                e.printStackTrace();
+                                throw new RuntimeException();
+                            }
+                        }
+                    }
+                    
+                    sm.setActiveBody(b);
+                }
+            });
+            if(!sclass.getName().contains("StreamSpliterators")){
+                scToCompile.add(sclass);
+            }
+            // if(sclass.getName().contains("app.Work")){
+            //     scToCompile.add(sclass);
+            // }
+        }
+        taskSync();
+        
+        for (SootClass sclass : scToCompile) {
+            addTask(new Runnable(){
+                @Override
+                public void run() {
+                    byte[] bytecode = CompileUtils.compileClass(sclass);
+                    cmap.put(sclass.toString(), bytecode);
+                    // String dirname = "AAA";
+                    // File outputDir = new File(dirname);
+                    // if (!outputDir.exists()) {
+                    //     outputDir.mkdir();
+                    // }
+                    // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
+                    // FileOutputStream classout;
+                    // try {
+                    //     classout = new FileOutputStream(file2);
+                    //     classout.write(bytecode);
+                    //     classout.close();
+                    // } catch (FileNotFoundException e) {
+                    //     e.printStackTrace();
+                    // } catch (IOException e) {
+                    //     e.printStackTrace();
+                    // }
+
+                }
+            });
+            // forTest = bytecode;
+            // if(sclass.getShortName().contains("IntWrappingSpliterator")){
+            //     try {
+            //         Class<?> mc = Class.forName("java.util.stream.StreamSpliterators$IntWrappingSpliterator");
+            //         p(mc.getClassLoader()+"");
+            //         for(Constructor<?> ct: mc.getConstructors()){
+            //             System.out.println("== "+ct+" :: " + Modifier.toString(ct.getModifiers()));
+            //         }
+            //         for(Method m : mc.getMethods()){
+            //             System.out.println("== "+m+" :: " + Modifier.toString(m.getModifiers()));
+            //         }
+            //     } catch (ClassNotFoundException e) {
+            //         e.printStackTrace();
+            //     }
+                
+            //     for(SootMethod mm : sclass.getMethods()){
+            //         System.out.println(mm.getSignature()+" :: " + Modifier.toString(mm.getModifiers()));
+
+            //     }
+
+            // }
+        }
+        taskSync();
+        return cmap;
+    }
+
+    public static Map<String, byte[]> instrumentOld() {
         Map<String, byte[]> cmap = new HashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : methodTPMap.keySet()) {
@@ -474,7 +636,7 @@ public class LumosAgent {
                 if (!(inst instanceof TimestampedInstrumentation)) {
                     List<Stmt> inserts = inst.addInsts();
                     if (inserts.size() > 0) {
-                        CompileUtils.insertAt(units, stmt, inserts, inst.isBefore());
+                        CompileUtils.insertAt(units, inserts, stmt, inst.isBefore());
                     }
                 }
             }
@@ -485,9 +647,9 @@ public class LumosAgent {
                 if (inst instanceof TimestampedInstrumentation) {
                     List<Stmt> inserts = inst.addInsts();
                     if (inserts.size() > 0) {
-                        CompileUtils.insertAt(units, stmt, inserts.get(0), true);
+                        CompileUtils.insertAt(units, inserts.get(0),stmt, true);
                         inserts.remove(0);
-                        CompileUtils.insertAt(units, stmt, inserts, false);
+                        CompileUtils.insertAt(units, inserts, stmt, false);
                         for (Unit uu : units) {
                             p(uu + "");
                         }
@@ -505,32 +667,12 @@ public class LumosAgent {
             // if(sclass.)
             cmap.put(sclass.toString(), bytecode);
 
-            // String dirname = "AAA";
-            // File outputDir = new File(dirname);
-            // if (!outputDir.exists()) {
-            // outputDir.mkdir();
-            // }
-            // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
-            // FileOutputStream classout;
-            // try {
-            // classout = new FileOutputStream(file2);
-            // classout.write(bytecode);
-            // classout.close();
-            // } catch (FileNotFoundException e) {
-            // e.printStackTrace();
-            // } catch (IOException e) {
-            // // TODO Auto-generated catch block
-            // e.printStackTrace();
-            // }
         }
         return cmap;
     }
 
     public static void main(String args[]) {
-        play();
-        // p(bytecode.toString());
-        // p(sclass.toString());
-
+        tplay();
     }
 
 }
