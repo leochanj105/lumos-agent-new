@@ -202,21 +202,25 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void reload(Map<String, byte[]> cmap) {
+        System.out.println("reloading");
         for(String s:cmap.keySet()){
             Map<String, byte[]> nmap = new HashMap<>();
             nmap.put(s,cmap.get(s));
+
+            // LumosAgent.p("reloading " + s);
             try {
                 // this.agent.reload(cmap);
                 this.agent.reload(nmap);
             } catch (UnmodifiableClassException e) {
-                System.out.println("?! " + s);
+                // System.out.println("?! " + s);
                 e.printStackTrace();
             } catch (Exception e) {
-                System.out.println("&& " + s);
+                // System.out.println("&& " + s);
                 e.printStackTrace();
             }
+            LumosAgent.p(s + " reloaded");
         }
-        LumosAgent.p("Instrumented");
+        // System.out.println("reloaded");
     }
 
     public void handleMessage(String message) {
@@ -299,7 +303,7 @@ public class AgentThread implements Runnable, MessageHandler {
         List<String> apaths = new ArrayList<String>();
         cpaths.add(testPath);
         apaths.addAll(cpaths);
-        apaths.add("/tmp/Global.jar");
+        apaths.add(LumosAgent.tracerJar);
         LumosAgent.setupSoot(cpaths, apaths);
         LumosAgent.setupClass("hdfs");
         LumosAgent.tplay();

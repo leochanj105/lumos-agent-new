@@ -12,11 +12,13 @@ import soot.jimple.Stmt;
 
 public abstract class LInst{
     public static String SEPARATOR = ",,";
+    public String type;
     public SootMethod sm;
     public String stmt;
     public int lineNum;
     public Value mayRecord;
     // public Body body; 
+    // public String id;
     public String id;
     // public List<Stmt> instrument(){
     //     return this.instrument(this.body);
@@ -24,11 +26,13 @@ public abstract class LInst{
     public abstract List<Stmt> instrument(Body b);
     // public abstract boolean isBefore();
     
-    public LInst(SootMethod sm, String stmt, int lineNum, Value mayRecord) {
+    public LInst(SootMethod sm, String stmt, int lineNum, Value mayRecord, String type) {
         this.sm = sm;
         this.stmt = stmt;
         this.lineNum = lineNum;
         this.mayRecord = mayRecord;
+        this.type = type;
+        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
     }
     public abstract String getType();
     public String toSummary(){
@@ -41,7 +45,7 @@ public abstract class LInst{
         String stmt = items[2];
         int lineNum = Integer.valueOf(items[3]);
         if(type.equals("concurrency")){
-            return new ConcurrencyInst(sm, stmt, lineNum);
+            return new ConcurrencyInst(sm, stmt, lineNum, type);
         }
         else{
             // if(sm==null){
@@ -54,7 +58,7 @@ public abstract class LInst{
     }
 
     public Stmt getActualStmt(Body b){
-        return  CompileUtils.searchStmt(b, stmt, lineNum);
+        return CompileUtils.searchStmt(b, stmt, lineNum);
     }
     @Override
     public int hashCode() {

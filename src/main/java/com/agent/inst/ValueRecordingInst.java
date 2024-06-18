@@ -21,28 +21,30 @@ import soot.jimple.AssignStmt;
 import soot.jimple.IdentityStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
+import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 
 public class ValueRecordingInst extends LInst{
-    public String type;
-    public String id;
+    // public String type;
+    // public String id;
     @Override
     public List<Stmt> instrument(Body b) {
         SootClass sysc = Scene.v().getSootClass("java.lang.System");
         PatchingChain<Unit> units = b.getUnits();
         List<Stmt> stmts = new ArrayList<>();
-        Stmt stmt = getActualStmt(b);
+        Stmt actualStmt = getActualStmt(b);
         // CompileUtils.setUpRR(b);
         if (type.equals("vread")) {
+            // System.out.println(this.id);
             Value v = null;
-            if (stmt instanceof AssignStmt) {
-                v = ((AssignStmt) stmt).getLeftOp();
+            if (actualStmt instanceof AssignStmt) {
+                v = ((AssignStmt) actualStmt).getLeftOp();
             }
-            else if(stmt instanceof IdentityStmt){
-                v = ((IdentityStmt) stmt).getLeftOp();
+            else if(actualStmt instanceof IdentityStmt){
+                v = ((IdentityStmt) actualStmt).getLeftOp();
             }
             if(v==null){
-                System.out.println("&&"+stmt+"\n"+ this.stmt);
+                System.out.println("&&"+actualStmt+"\n"+ this.stmt);
                 System.out.println(sm.getActiveBody());
             }
             Type t = v.getType();
@@ -56,43 +58,45 @@ public class ValueRecordingInst extends LInst{
                 stmts.add(astmt);
                 toRec = intLocal;
             }
-            List<Stmt> logStmt = CompileUtils.generateLog(b, stmt, toRec, LumosAgent.logger,
+            List<Stmt> logStmt = CompileUtils.generateLog(b, actualStmt, toRec, LumosAgent.logger,
                     this.id + ":" + v);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
-            InvokeExpr iexpr = stmt.getInvokeExpr();
+            if(actualStmt == null){
+                System.out.println(stmt +"\n"+b);
+            }
+            InvokeExpr iexpr = actualStmt.getInvokeExpr();
             if (iexpr != null) {
                 if (iexpr instanceof InstanceInvokeExpr) {
-                    // SootMethod timer = sysc.getMethod("long nanoTime()");
                     SootClass objc = Scene.v().getSootClass("java.lang.Object");
                     SootMethod getcm = objc.getMethod("java.lang.Class getClass()");
                     Local classLocal = CompileUtils.getLocal(b, "classLocal", getcm.getReturnType());
                     Stmt astmt = CompileUtils.assign(classLocal,
                             CompileUtils.invokeV((Local) ((InstanceInvokeExpr) iexpr).getBase(), getcm));
+                    // Stmt astmt = CompileUtils.assign(classLocal, NullConstant.v());
                     stmts.add(astmt);
-                    List<Stmt> logStmt = CompileUtils.generateLog(b, stmt, classLocal, LumosAgent.logger,
+                    List<Stmt> logStmt = CompileUtils.generateLog(b, actualStmt, classLocal, LumosAgent.logger,
                             this.id + ":CLASS");
                     stmts.addAll(logStmt);
                 }
 
             }
         }
-        if (CompileUtils.isParamIdentity(stmt)) {
+        if (CompileUtils.isParamIdentity(actualStmt)) {
             // if(body == null){System.out.println(sm+"\n"+stmt.hashCode());}
             CompileUtils.insertAt(units, stmts, CompileUtils.firstStmt(b));
         } else {
-            CompileUtils.insertAt(units, stmts, stmt);
+            CompileUtils.insertAt(units, stmts, actualStmt);
         }
         return stmts;
     }
 
     public ValueRecordingInst(SootMethod sm, String stmt, int lineNum, String type) {
-        super(sm, stmt, lineNum,null);
+        super(sm, stmt, lineNum, null, type);
         if(sm.getDeclaringClass().getName().equals("java.lang.Object")){
             System.out.println("!!! " +toSummary());
         }
-        this.type = type;
-        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        // this.type = type;
     }
 
     @Override

@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
 import com.agent.compile.CompileUtils;
-import com.agent.inst.ConcurrencyInst;
 import com.agent.inst.LInst;
 
 import soot.Body;
@@ -30,7 +29,6 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Type;
 import soot.Unit;
-import soot.jimple.JimpleBody;
 import soot.jimple.Stmt;
 import soot.options.Options;
 import tracing.LumosInstrumentation;
@@ -64,7 +62,8 @@ public class LumosAgent {
     
     public static Set<SootMethod> entryMethods = new HashSet<>();
     public static Set<String> entryClasses = new HashSet<>();
-    public static String rrClass = "com.agent.Global";
+    public static String rrClass = "com.lumos.trace.LumosTracer";
+    public static String tracerJar = "/tmp/LumosTracer.jar";
     
     public static byte[] forTest;
     public static String testclass;
@@ -74,7 +73,25 @@ public class LumosAgent {
     public static String cpath = "";
     public static List<String> includeList;
     public static List<String> processList;
-    // public static String jarpat
+    public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
+        "java.util.stream.StreamSpliterators$SliceSpliterator$OfDouble",
+        "java.util.stream.Tripwire",
+        "java.util.stream.StreamSpliterators$IntWrappingSpliterator",
+        "java.util.Collections$UnmodifiableMap$UnmodifiableEntrySet",
+        "java.util.stream.Collectors",
+        "java.util.TreeMap$EntrySpliterator",
+        "java.util.Collections$CopiesList",
+        "java.util.stream.StreamSpliterators$LongWrappingSpliterator",
+        "java.util.stream.StreamSpliterators$WrappingSpliterator",
+        "java.util.stream.SliceOps",
+        "java.util.stream.DistinctOps$1",
+        "java.util.stream.StreamSpliterators$SliceSpliterator$OfRef",
+        "java.util.Tripwire",
+        "java.util.stream.StreamSpliterators$DistinctSpliterator",
+        "java.util.stream.AbstractPipeline",
+        "java.util.stream.StreamSpliterators$DoubleWrappingSpliterator",
+    }));
+    // public static String jarpa
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
 
     // public static String cpath =
@@ -119,10 +136,14 @@ public class LumosAgent {
         //         clsname.endsWith("sso.domain.Account") || clsname.endsWith("inside_payment.domain.DrawBack"));
     }
 
+    public static boolean checkSkipped(SootClass cls){
+        return skippedClasses.contains(cls.toString());
+    }
+
     public static void premain(String agentArgs, Instrumentation inst) {
         JarFile jarFile = null;
         try {
-            jarFile = new JarFile("/tmp/Global.jar");
+            jarFile = new JarFile(tracerJar);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -144,15 +165,16 @@ public class LumosAgent {
                         LumosAgent.cloader = loader;
                     }
                 }
-                String targetName = className.replace(File.separatorChar, '.');
-                if (entryClasses.contains(targetName)) {
-                    while(!analyzeReady){
-                        AgentThread.sleep(500);
-                    }
+                // String targetName = className.replace(File.separatorChar, '.');
+                // if (entryClasses.contains(targetName)) {
+                    // p("!! "+loader+"\n"+classBeingRedefined);
+                    // while(!analyzeReady){
+                    //     AgentThread.sleep(500);
+                    // }
 
-                    SootClass entryClass = Scene.v().getSootClass(targetName);
-                    return CompileUtils.compileClass(entryClass);
-                }
+                    // SootClass entryClass = Scene.v().getSootClass(targetName);
+                    // return CompileUtils.compileClass(entryClass);
+                // }
                 return classFileBuffer;
             }
         });
@@ -166,6 +188,9 @@ public class LumosAgent {
                 (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
         // tplay();
         // t.refreshInsts();
+        // while(!analyzeReady){
+        //     AgentThread.sleep(1000);
+        // }
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
@@ -364,8 +389,8 @@ public class LumosAgent {
             classMap.put(cls.toString(), cls);
         }
         // taskSync();
-        p("----Analysis Done------");
-        analyzeReady = true;
+        // p("----Analysis Done------");
+        // analyzeReady = true;
     }
 
     public static void analyzePath(String path) {
@@ -507,17 +532,18 @@ public class LumosAgent {
         Map<String, byte[]> cmap = new ConcurrentHashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : activeInsts.keySet()) {
-
             SootMethod sm = Scene.v().getMethod(smstr);
             SootClass sclass = findClass(sm.getDeclaringClass().getName());
-
-            // if(!sclass.getName().contains("mycompany.app.")){ continue;}
+            if (checkSkipped(sclass)) {
+                continue;
+            }
+            // if(!sclass.getName().contains("java.lang.")){ continue;}
             List<Stmt> targetstmts = new ArrayList<>();
             List<LInst> targetInsts = new ArrayList<>();
 
             Body b = findBody(smstr);
             // p("?? " + b);
-            addTask(new Runnable(){
+            addTask(new Runnable() {
                 @Override
                 public void run() {
                     // This two-step way is needed to avoid inserted stmts
@@ -532,35 +558,30 @@ public class LumosAgent {
                     for (int i = 0; i < targetstmts.size(); i++) {
                         // Stmt stmt = targetstmts.get(i);
                         LInst inst = targetInsts.get(i);
-                        if (!(inst instanceof ConcurrencyInst)) {
-                            // if(!sclass.getName().contains("app.App")){
-                            inst.instrument(b);
-                            // }
+                        // if (!(inst instanceof ConcurrencyInst)) {
+                        // if(!sclass.getName().contains("app.App")){
+                        // }
 
-                            try {
-                                b.validate();
-                            } catch (Exception e) {
-                                p(b+"");
-                                e.printStackTrace();
-                                throw new RuntimeException();
-                            }
-                        }
+                        // try {
+                        inst.instrument(b);
+                        b.validate();
+                        // } catch (Exception e) {
+                        // p(b+"");
+                        // e.printStackTrace();
+                        // throw new RuntimeException();
+                        // }
+                        // }
                     }
-                    
+                    // p(b+"");
                     sm.setActiveBody(b);
                 }
             });
-            if(!sclass.getName().contains("StreamSpliterators")){
-                scToCompile.add(sclass);
-            }
-            // if(sclass.getName().contains("app.Work")){
-            //     scToCompile.add(sclass);
-            // }
+            scToCompile.add(sclass);
         }
         taskSync();
-        
+
         for (SootClass sclass : scToCompile) {
-            addTask(new Runnable(){
+            addTask(new Runnable() {
                 @Override
                 public void run() {
                     byte[] bytecode = CompileUtils.compileClass(sclass);
@@ -568,18 +589,18 @@ public class LumosAgent {
                     // String dirname = "AAA";
                     // File outputDir = new File(dirname);
                     // if (!outputDir.exists()) {
-                    //     outputDir.mkdir();
+                    // outputDir.mkdir();
                     // }
                     // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
                     // FileOutputStream classout;
                     // try {
-                    //     classout = new FileOutputStream(file2);
-                    //     classout.write(bytecode);
-                    //     classout.close();
+                    // classout = new FileOutputStream(file2);
+                    // classout.write(bytecode);
+                    // classout.close();
                     // } catch (FileNotFoundException e) {
-                    //     e.printStackTrace();
+                    // e.printStackTrace();
                     // } catch (IOException e) {
-                    //     e.printStackTrace();
+                    // e.printStackTrace();
                     // }
 
                 }
