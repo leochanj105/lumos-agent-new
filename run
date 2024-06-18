@@ -1,0 +1,6 @@
+#!/bin/bash
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+#java -version
+$JAVA_HOME/jre/bin/java -version
+$JAVA_HOME/jre/bin/java -javaagent:/home/jingyuan/lumos/lumos-agent/target/LumosAgent-jar-with-dependencies.jar -cp target/my-app-1.0-SNAPSHOT.jar com.mycompany.app.App hi
+# java -cp target/my-app-1.0-SNAPSHOT.jar com.mycompany.app.App hi
