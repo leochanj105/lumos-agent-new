@@ -57,7 +57,7 @@ public class ValueRecordingInst extends LInst{
                 stmts.add(astmt);
                 toRec = intLocal;
             }
-            List<Stmt> logStmt = CompileUtils.generateLog(b, actualStmt, toRec, LumosAgent.logger,
+            List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, toRec, LumosAgent.logger,
                     this.id + ":" + v);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
@@ -74,8 +74,8 @@ public class ValueRecordingInst extends LInst{
                             CompileUtils.invokeV((Local) ((InstanceInvokeExpr) iexpr).getBase(), getcm));
                     // Stmt astmt = CompileUtils.assign(classLocal, NullConstant.v());
                     stmts.add(astmt);
-                    List<Stmt> logStmt = CompileUtils.generateLog(b, actualStmt, classLocal, LumosAgent.logger,
-                            this.id + ":CLASS");
+                    List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, classLocal, LumosAgent.logger,
+                            this.id);
                     stmts.addAll(logStmt);
                 }
 

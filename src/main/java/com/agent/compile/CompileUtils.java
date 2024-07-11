@@ -121,9 +121,6 @@ public class CompileUtils {
         return primitiveNames.contains(trim(t.toString()));
     }
 
-    // public static void insertBeforeR(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target){
-    //     insertBefore(units,
-    // }
 
     public static void insertAt(PatchingChain<Unit> units, Stmt toinsert, Stmt target) {
         insertAt(units, toinsert, target, false);
@@ -134,15 +131,7 @@ public class CompileUtils {
     }
     public static void insertAt(PatchingChain<Unit> units, Stmt toinsert, Stmt target, boolean before) {
         if (before) {
-            // List<UnitBox> oldUnits = new ArrayList<>(target.getBoxesPointingToThis());
-            // for(UnitBox ub : oldUnits){
-            //     target.removeBoxPointingToThis(ub);
-            // }
-            // units.in
             units.insertBeforeNoRedirect(toinsert, target);
-            // for(UnitBox ub : oldUnits){
-            //     target.addBoxPointingToThis(ub);
-            // }
         } else {
             units.insertAfter(toinsert, target);
         }
@@ -150,22 +139,13 @@ public class CompileUtils {
     
     public static void insertAt(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target, boolean before) {
         if (before) {
-            // List<UnitBox> oldUnits = new ArrayList<>(target.getBoxesPointingToThis());
-            // for(UnitBox ub : oldUnits){
-            //     target.removeBoxPointingToThis(ub);
-            // }
             List<Unit> insUnits = new ArrayList<>(toinsert);
             units.insertBeforeNoRedirect(insUnits, target);
-            // for(UnitBox ub : oldUnits){
-            //     target.addBoxPointingToThis(ub);
-            // }
         } else {
             units.insertAfter(toinsert, target);
         }
-        // body.validate();
     }
 
-    // public static List<Stmt> assign
     public static SootMethod getMethod(String className, String methodName) {
         return Scene.v()
                 .getSootClass(className)
@@ -198,13 +178,9 @@ public class CompileUtils {
 
     public static List<Stmt> generateRRtoggle(Body body, String field, boolean isOn){
         List<Stmt> insts = new ArrayList<>();
-        // FieldRef fr = sref(field);
         Local bLocal = getLocal(body, "bLocal", IntType.v());
-        // Local rrLocal = getLocal(body, "rrLocal", fr.getType());
-
         Value v = isOn ? IntConstant.v(1) : IntConstant.v(0);
         insts.add(assign(bLocal, v));
-        // insts.add(assign(rrLocal, sref(field)));
         SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void toggle(boolean)");
         insts.add(call(invoke(togglem, bLocal)));
         return insts;
@@ -388,97 +364,46 @@ public class CompileUtils {
                 !(((IdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef);
     }
 
-    public static List<Stmt> generateLog(Body body, Stmt stmt, Value v, String logger, String tag){
+    public static List<Stmt> generateValueLog(Body body, Stmt stmt, Value v, String logger, String tag) {
+        return generateValueLog(body, stmt, v, logger, tag, null, null, null);
+    }
+
+    public static List<Stmt> generateValueLog(Body body, Stmt stmt, Value v, String logger, String tag, 
+            Value start, Value end, Value index){
         SootMethod logMethod = null;
-        // Local tmpString1 = getLocal(body, "tmpString1", RefType.v("java.lang.String"));
-        // Local tmpString2 = getLocal(body, "tmpString2", RefType.v("java.lang.String"));
-        // SootMethod concatMethod = getMethod("java.lang.String", "java.lang.String concat(java.lang.String)");
-        StringConstant fmtString = null;
-        String lmStr = "";
-        // Local loggerLocal = findLocal(body, "loggerLocal");
-        
-        if (logger.equals("stdout")) {
-            fmtString = StringConstant.v("[" + tag + "]=");
-            // logMethod = getMethod("java.io.PrintStream", "void println(java.lang.String)");
-            // logMethod = getMethod("com.lumos.trace.LumosTracer", "void logSysOut(java.lang.String)");
-            lmStr = "void logSysOut";
-        } else if (logger.equals("log4j")) {
-            lmStr = "void logTrace";
-            fmtString = StringConstant.v("[" + tag + "]=");
+        StringConstant tagVal = StringConstant.v(tag+"=");
+        Stmt invokeStmt = null;
+        // if start/end is non-null we do timestamped trace
+        if (start == null || end == null) {
+            String lmStr = "";
+            if (logger.equals("stdout")) {
+                lmStr = "void logSysOut";
+            } else if (logger.equals("log4j")) {
+                lmStr = "void logTrace";
+            }
+            logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+            invokeStmt = call(invoke(logMethod, v, tagVal));
         }
-        logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
-        // Local bLocal = getLocal(body, "bLocal", BooleanType.v());
-        //if (loggerLocal == null) {
-        //    List<Stmt> initStmts = new ArrayList<>();
-        //    // bLocal = getLocal(body, "bLocal", BooleanType.v());
-        //    // Local booleanLocal = getLocal(b, "booleanLocal", "java.lang.Boolean");
-        //    Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
-        //    Local tlLocal = getLocal(body, "tlLocal", "java.lang.ThreadLocal");
-
-        //    loggerLocal = getLocal(body, "loggerLocal", "java.io.PrintStream");
-        //    Stmt assignLogger = assign(loggerLocal,
-        //            sref("<java.lang.System: java.io.PrintStream out>"));
-        //    try{
-        //        insertAt(body.getUnits(), assignLogger, firstStmt(body), true);
-        //    }
-        //    catch(Exception e){
-        //        //System.out.println(assignLogger);
-        //        System.out.println(body);
-        //    }
-        //    initStmts.add(assign(tlLocal, sref(LumosAgent.getRRField())));
-        //    SootMethod gm = getMethod("java.lang.ThreadLocal", "java.lang.Object get()");
-        //    // initStmts.add(assign(objLocal, invokeV(tlLocal, gm)));
-        //    initStmts.add(assign(objLocal, NullConstant.v()));
-        //    Stmt assignT = assign(bLocal, IntConstant.v(1));
-        //    Stmt assignF = assign(bLocal, IntConstant.v(0));
-        //    Stmt jump = GOTO(firstStmt(body));
-        //    initStmts.add(IF(EQ(objLocal, NullConstant.v()), assignF));
-        //    initStmts.add(assignT);
-        //    initStmts.add(jump);
-        //    initStmts.add(assignF);
-        //    body.getUnits().insertAfter(initStmts, assignLogger);
-        //} else if (logger.equals("xtrace")) {
-        //    fmtString = StringConstant.v("[" + tag + "]=");
-        //    // logMethod = getMethod("java.io.PrintStream", "java.io.PrintStream
-        //    // printf(java.lang.String,java.lang.Object[])");
-        //}
-        
+        else{
+            if(v == null){
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logEmptyTimedTrace");
+                invokeStmt = call(invoke(logMethod, tagVal, start, end));
+            }
+            else if(index == null){
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logTimedTrace");
+                invokeStmt = call(invoke(logMethod, v, tagVal, start, end));
+            }
+            else{
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logIndexedTimedTrace");
+                invokeStmt = call(invoke(logMethod, v, index, tagVal, start, end));
+            }
+        }
         List<Stmt> stlist = new ArrayList<>();
-        // Stmt succ = null;
-        // if(isParamIdentity(stmt)){ 
-        //     succ = (Stmt)((JimpleBody)body).getUnits().getSuccOf(firstStmt(body));
-        // }
-        // else{
-        //     succ = (Stmt)((JimpleBody)body).getUnits().getSuccOf(stmt);
-        // }
-        // Local tlLocal = getLocal(body, "tlLocal", "java.lang.ThreadLocal");
-        // Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
-        // Local nullLocal = getLocal(body, "nullLocal", "java.lang.Object");
-        // test if recording is on
-        // bLocal == true
-        //
-        // IfStmt ifs = IF(EQ(bLocal, IntConstant.v(0)), succ);
-        // stlist.add(ifs);
-        // SootMethod setm = getMethod("java.lang.ThreadLocal", "void set(java.lang.Object)");
-
-        // turn off recording
-        
-        // stlist.add(assign(nullLocal, NullConstant.v()));
-        // stlist.add(call(invokeV(tlLocal, setm, nullLocal)));
-        // stlist.add(assign(tmpString1, fmtString));
-        // if (v != null) {
-        //     stlist.add(assign(tmpString2, invoke(getValueOfMethod(v), v)));
-        //     stlist.add(assign(tmpString1, invokeV(tmpString1, concatMethod, tmpString2)));
-        // }
-        // if (logger.equals("stdout")) {
-            stlist.add(call(invoke(logMethod, v, fmtString)));
-        // }
-        // turn on recording 
-        // stlist.add(assign(objLocal, sref("<java.lang.Boolean: java.lang.Boolean TRUE>")));
-        // stlist.add(call(invokeV(tlLocal, setm, objLocal)));
-
+        stlist.add(invokeStmt);
         return stlist;
     }
+
+    
     public static Stmt call(InvokeExpr expr){
         return Jimple.v().newInvokeStmt(expr);
     }

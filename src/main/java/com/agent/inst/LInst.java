@@ -1,6 +1,7 @@
 package com.agent.inst;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
@@ -12,6 +13,7 @@ import soot.jimple.Stmt;
 
 public abstract class LInst{
     public static String SEPARATOR = ",,";
+    public static AtomicInteger currId = new AtomicInteger(0);
     public String type;
     public SootMethod sm;
     public String stmt;
@@ -32,30 +34,12 @@ public abstract class LInst{
         this.lineNum = lineNum;
         this.mayRecord = mayRecord;
         this.type = type;
-        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        // this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        this.id = currId.getAndIncrement()+"";
     }
     public abstract String getType();
     public String toSummary(){
         return getType() + SEPARATOR + sm.getSignature() + SEPARATOR + stmt + SEPARATOR + lineNum;
-    }
-    public static LInst fromSummary(String summary){
-        String[] items = summary.split(SEPARATOR);
-        String type = items[0];
-        SootMethod sm = LumosAgent.findMethod(items[1]);
-        sm.retrieveActiveBody();
-        String stmt = items[2];
-        int lineNum = Integer.valueOf(items[3]);
-        if(type.equals("concurrency")){
-            return new ConcurrencyInst(sm, stmt, lineNum, type);
-        }
-        else{
-            // if(sm==null){
-            //     LumosAgent.p(summary);
-            //     LumosAgent.p(items+"");
-                // LumosAgent.p(LumosA)
-            // }
-            return new ValueRecordingInst(sm, stmt, lineNum, type);
-        }
     }
 
     public Stmt getActualStmt(Body b){

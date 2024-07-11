@@ -46,10 +46,8 @@ public class ConcurrencyInst extends LInst{
         units.insertBefore(startStmt, assignStmt);
         List<Stmt> followings = new ArrayList<>();
         followings.add(endStmt);
-        // followings.add(negStmt);
-        // followings.add(diffStmt);
-        followings.addAll(CompileUtils.generateLog(b, endStmt, startLocal, LumosAgent.logger, "start"));
-        followings.addAll(CompileUtils.generateLog(b, endStmt, endLocal, LumosAgent.logger, "end"));
+        // followings.addAll(CompileUtils.generateValueLog(b, endStmt, startLocal, LumosAgent.logger, "s"));
+        // followings.addAll(CompileUtils.generateValueLog(b, endStmt, endLocal, LumosAgent.logger, "e"));
 
         // /*
         Value rop = assignStmt.getRightOp();
@@ -58,40 +56,39 @@ public class ConcurrencyInst extends LInst{
         String rid = this.id;
         if(lop instanceof ConcreteRef){
             target = lop;
-            rid+=":W";
+            // rid+=":W";
         }
         else if(rop instanceof ConcreteRef){
             target = rop;
-            rid+=":R";
+            // rid+=":R";
         }
         else{
             System.out.println(stmt);
             System.out.println(assignStmt);
             throw new RuntimeException("at least one side must be a ConcreteRef!");
         }
-        Value toRec = null;
+        Value toRec = null, index = null, intLocal = null;
         if(target instanceof StaticFieldRef){
             // No need to log base for static references
-            rid += ":"+((StaticFieldRef)target).getField().getName()+"(S)";
-            // toRec = StringConstant.v(((StaticFieldRef)target).getField().getDeclaringClass().getName());
         }
         else if(target instanceof InstanceFieldRef){
-            rid += ":"+((InstanceFieldRef)target).getField().toString();
             toRec = ((InstanceFieldRef)target).getBase();
         }
         else if(target instanceof ArrayRef){
-            rid += "[]";
+            // Need to also log index for arrayref
             toRec = ((ArrayRef)target).getBase();
-            Value index = ((ArrayRef)target).getIndex();
-            followings.addAll(CompileUtils.generateLog(b, endStmt, index, LumosAgent.logger, "INDEX"));
+            index = ((ArrayRef)target).getIndex();
         }
         if (toRec != null) {
-            Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
+            intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
             Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, toRec));
             followings.add(astmt);
-            followings.addAll(CompileUtils.generateLog(b, endStmt, intLocal, LumosAgent.logger, rid));
+            followings.addAll(CompileUtils.generateValueLog(b, endStmt, intLocal, LumosAgent.logger, rid));
         }
         // */
+        followings.addAll(
+                CompileUtils.generateValueLog(b, endStmt, intLocal, LumosAgent.logger, rid,
+                        startLocal, endLocal, index));
         units.insertAfter(followings, assignStmt);
         return null;
     }
