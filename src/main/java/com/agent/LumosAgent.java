@@ -820,14 +820,12 @@ public class LumosAgent {
                 }
             }
         
-            if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
-                Printer.v().printTo(sclass, new PrintWriter(System.out, true));
+            // if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
+            //     Printer.v().printTo(sclass, new PrintWriter(System.out, true));
                 // compile("ChronoLocalDateTime", CompileUtils.compileClass(sclass));
                 // try {
                 //     Class<?> mc = Class.forName("org.apache.hadoop.hdfs.server.namenode.NameCache$UseCount",
                 //             true, LumosAgent.cloader);
-                    
-                    
                 //     for(Method m : mc.getMethods()){
                 //         System.out.println("J: " + m+" :: " + Modifier.toString(m.getModifiers()));
                 //     }
@@ -839,7 +837,7 @@ public class LumosAgent {
                 //     e.printStackTrace();
                 // }
 
-            }
+            // }
             addTask(new Runnable() {
                 @Override
                 public void run() {

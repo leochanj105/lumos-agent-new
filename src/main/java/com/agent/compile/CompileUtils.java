@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.agent.LumosAgent;
 
+import javassist.compiler.ast.IntConst;
 import me.xdrop.fuzzywuzzy.FuzzySearch;
 
 // import com.lumos.App;
@@ -29,6 +30,7 @@ import me.xdrop.fuzzywuzzy.FuzzySearch;
 // import jas.StringCP;
 import soot.Body;
 import soot.BooleanType;
+import soot.IntType;
 import soot.Local;
 import soot.PatchingChain;
 import soot.Printer;
@@ -196,14 +198,15 @@ public class CompileUtils {
 
     public static List<Stmt> generateRRtoggle(Body body, String field, boolean isOn){
         List<Stmt> insts = new ArrayList<>();
-        FieldRef fr = sref(field);
-        Local objLocal = getLocal(body, "objLocal", "java.lang.Object");
-        Local vlocal = getLocal(body, "rrLocal", fr.getType());
-        Value v = isOn? sref("<java.lang.Boolean: java.lang.Boolean TRUE>") : NullConstant.v();
-        insts.add(assign(objLocal, v));
-        insts.add(assign(vlocal, sref(field)));
-        SootMethod setm = getMethod("java.lang.ThreadLocal", "void set(java.lang.Object)");
-        insts.add(call(invokeV(vlocal, setm, objLocal)));
+        // FieldRef fr = sref(field);
+        Local bLocal = getLocal(body, "bLocal", IntType.v());
+        // Local rrLocal = getLocal(body, "rrLocal", fr.getType());
+
+        Value v = isOn ? IntConstant.v(1) : IntConstant.v(0);
+        insts.add(assign(bLocal, v));
+        // insts.add(assign(rrLocal, sref(field)));
+        SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void toggle(boolean)");
+        insts.add(call(invoke(togglem, bLocal)));
         return insts;
     }
     public static List<Stmt> generateInitOld(Body body, String member) {
