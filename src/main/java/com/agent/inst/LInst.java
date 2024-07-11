@@ -42,6 +42,7 @@ public abstract class LInst{
         String[] items = summary.split(SEPARATOR);
         String type = items[0];
         SootMethod sm = LumosAgent.findMethod(items[1]);
+        sm.retrieveActiveBody();
         String stmt = items[2];
         int lineNum = Integer.valueOf(items[3]);
         if(type.equals("concurrency")){

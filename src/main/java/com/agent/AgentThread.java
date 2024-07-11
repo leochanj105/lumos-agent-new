@@ -1,5 +1,6 @@
 package com.agent;
 
+import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
 import java.net.URI;
@@ -8,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -43,7 +45,7 @@ public class AgentThread implements Runnable, MessageHandler {
     public static final String METHODNAME = "query";
     public static final String TESTTP = "io.opentelemetry.api.trace.Span.current().addEvent(\"[LUMOS] HELLO!!!!!!!!\");";
     public static final int TESTLINE = 158;
-
+    public static LumosClassLoader lambdaLoader = new LumosClassLoader();
     public AgentThread(Instrumentation inst) {
         this.inst = inst;
         this.agent = new JVMAgent(inst);
@@ -206,16 +208,29 @@ public class AgentThread implements Runnable, MessageHandler {
         for(String s:cmap.keySet()){
             Map<String, byte[]> nmap = new HashMap<>();
             nmap.put(s,cmap.get(s));
+            // if(s.equals("org.apache.hadoop.hdfs.util.CyclicIteration")){
+            //     continue;
+            // }
+            ClassLoader actualLoader = LumosAgent.cloader;
+            if(s.contains("$lambda_")){
+                actualLoader = lambdaLoader;
+                lambdaLoader.setByteCode(s, cmap.get(s));
 
-            // LumosAgent.p("reloading " + s);
+            }
+            LumosAgent.p("reloading " + s);
             try {
                 // this.agent.reload(cmap);
                 this.agent.reload(nmap);
-            } catch (UnmodifiableClassException e) {
-                // System.out.println("?! " + s);
+            } 
+            catch (UnmodifiableClassException e) {
+                System.out.println("?! " + s);
                 e.printStackTrace();
             } catch (Exception e) {
-                // System.out.println("&& " + s);
+                System.out.println("&& " + s);
+                e.printStackTrace();
+            }
+            catch (Error e) {
+                System.out.println("## " + s);
                 e.printStackTrace();
             }
             LumosAgent.p(s + " reloaded");
@@ -250,7 +265,7 @@ public class AgentThread implements Runnable, MessageHandler {
         List<TracePoint> tps = new ArrayList<>();
         SootMethod sm = LumosAgent.findMethod("create", "order.service.OrderServiceImpl");
         System.out.println(sm);
-        Body b = LumosAgent.findBody(sm.toString());
+        Body b = (Body)LumosAgent.getBody(sm).clone();
         List<Stmt> saveStmts = new ArrayList<>();
         List<Stmt> savedObjs = new ArrayList<>();
         for (Unit u : b.getUnits()) {
@@ -288,6 +303,17 @@ public class AgentThread implements Runnable, MessageHandler {
         refreshTPs();
     }
 
+    public static void readJars(String path, List<String> jars){
+        File folder = new File(path);
+        File[] listOfFiles = folder.listFiles();
+        if (listOfFiles != null) {
+            for (int i = 0; i < listOfFiles.length; i++) {
+                if (listOfFiles[i].getName().endsWith(".jar")) {
+                    jars.add(listOfFiles[i].getAbsolutePath());
+                } 
+            }
+        }
+    }
     @Override
     public void run() {
         System.out.println("Agent thread started");
@@ -297,16 +323,29 @@ public class AgentThread implements Runnable, MessageHandler {
             sleep(500);
         }
         System.out.println("Agent ready");
-
+        System.out.println(System.getProperty("java.version"));
+        String basePath = "/home/jingyuan/hadoop";
+        String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
+        String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
+        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/common/lib/";
+        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/hdfs/lib/";
+        String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/httpfs/tomcat/lib/";
         String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
+        List<String> jpaths = new ArrayList<String>();
         List<String> apaths = new ArrayList<String>();
-        cpaths.add(testPath);
+        readJars(commonJarPath, jpaths);
+        readJars(hdfsJarPath, jpaths);
+        readJars(httpfsJarPath, jpaths);
+        cpaths.add(commonPath);
+        cpaths.add(hdfsPath);
+        // cpaths.add(testPath);
         apaths.addAll(cpaths);
         apaths.add(LumosAgent.tracerJar);
+        cpaths.addAll(jpaths);
         LumosAgent.setupSoot(cpaths, apaths);
         LumosAgent.setupClass("hdfs");
-        LumosAgent.tplay();
+        LumosAgent.lplay();
         refreshInsts();
 
         // Connect to websocket controller server

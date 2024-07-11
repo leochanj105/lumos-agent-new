@@ -21,7 +21,6 @@ import soot.jimple.AssignStmt;
 import soot.jimple.IdentityStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
-import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 
 public class ValueRecordingInst extends LInst{

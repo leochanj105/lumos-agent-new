@@ -1,16 +1,20 @@
 package com.agent;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,11 +22,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
 import com.agent.compile.CompileUtils;
+import com.agent.inst.ConcurrencyInst;
 import com.agent.inst.LInst;
+import com.agent.inst.ValueRecordingInst;
 
 import soot.Body;
 import soot.G;
 import soot.PatchingChain;
+import soot.Printer;
 import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
@@ -57,12 +64,14 @@ public class LumosAgent {
     public static Map<String, Set<LInst>> activeInsts = new HashMap<>();
     // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
     // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
-    public static String logger = "stdout";
+    public static String logger = "log4j";
+
+    // public static String logger = "stdout";
     // public static String rrClass = "com.mycompany.app.App";
     
     public static Set<SootMethod> entryMethods = new HashSet<>();
     public static Set<String> entryClasses = new HashSet<>();
-    public static String rrClass = "com.lumos.trace.LumosTracer";
+    public static String rrClass = "com.lumos.tracer.LumosTracer";
     public static String tracerJar = "/tmp/LumosTracer.jar";
     
     public static byte[] forTest;
@@ -73,7 +82,11 @@ public class LumosAgent {
     public static String cpath = "";
     public static List<String> includeList;
     public static List<String> processList;
+
     public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
+
+    // %Issue: these classes are static and will generate new native methods 
+    // at runtime
         "java.util.stream.StreamSpliterators$SliceSpliterator$OfDouble",
         "java.util.stream.Tripwire",
         "java.util.stream.StreamSpliterators$IntWrappingSpliterator",
@@ -90,6 +103,25 @@ public class LumosAgent {
         "java.util.stream.StreamSpliterators$DistinctSpliterator",
         "java.util.stream.AbstractPipeline",
         "java.util.stream.StreamSpliterators$DoubleWrappingSpliterator",
+    // Same issue, but with only one method problematic/missing
+        "java.time.format.DateTimeFormatterBuilder",
+    // don't understand why yet....
+        // "com.google.common.base.Joiner$2",
+        // "com.google.common.base.Joiner$3",
+        // "com.google.common.collect.SingletonImmutableList$1",
+    // interface; it reports verifyError even if we don't instrument anything...
+        "java.time.chrono.ChronoLocalDateTime",
+        "java.time.chrono.Chronology",
+        "java.time.chrono.ChronoZonedDateTime",
+    // Currently removed for stopping infinite recursion in tracer
+        "java.lang.ref.WeakReference",
+        "java.lang.ThreadLocal$ThreadLocalMap",
+        "java.lang.ThreadLocal$ThreadLocalMap$Entry",
+        // "java.util.concurrent.atomic.AtomicInteger",
+        // "java.lang.ref.ReferenceQueue$Lock",
+        // "java.lang.ref.ReferenceQueue$Null",
+        // "java.lang.ThreadGroup",
+        // "sun.misc.Cleaner"
     }));
     // public static String jarpa
     // "C:\\Users\\jchen\\Desktop\\Academic\\lumos\\lumos-experiment\\ts-launcher\\opentelemetry-javaagent.jar";
@@ -141,13 +173,21 @@ public class LumosAgent {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
-        JarFile jarFile = null;
+        JarFile tracerJarFile = null;
+        JarFile slf4jJarFile = null;
+        JarFile slf4j_log4j12JarFile = null;
         try {
-            jarFile = new JarFile(tracerJar);
+            tracerJarFile = new JarFile(tracerJar);
+            // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
+
+            // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
         } catch (IOException e) {
             e.printStackTrace();
         }
-        inst.appendToBootstrapClassLoaderSearch(jarFile);
+        inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
+        // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
+
+        // inst.appendToBootstrapClassLoaderSearch(slf4j_log4j12JarFile);
         inst.addTransformer(new ClassFileTransformer() {
             @Override
             public byte[] transform(
@@ -165,20 +205,9 @@ public class LumosAgent {
                         LumosAgent.cloader = loader;
                     }
                 }
-                // String targetName = className.replace(File.separatorChar, '.');
-                // if (entryClasses.contains(targetName)) {
-                    // p("!! "+loader+"\n"+classBeingRedefined);
-                    // while(!analyzeReady){
-                    //     AgentThread.sleep(500);
-                    // }
-
-                    // SootClass entryClass = Scene.v().getSootClass(targetName);
-                    // return CompileUtils.compileClass(entryClass);
-                // }
                 return classFileBuffer;
             }
         });
-        // play();
         AgentThread t = new AgentThread(inst);
         Thread thread = new Thread(t);
         thread.start();
@@ -186,11 +215,6 @@ public class LumosAgent {
         long maxMemory = Runtime.getRuntime().maxMemory();
         System.out.println("Maximum memory (bytes): " +
                 (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
-        // tplay();
-        // t.refreshInsts();
-        // while(!analyzeReady){
-        //     AgentThread.sleep(1000);
-        // }
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
@@ -308,6 +332,8 @@ public class LumosAgent {
         Options.v().setPhaseOption("jb", "use-original-names:true");
         Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
         Options.v().setPhaseOption("jb", "stabilize-local-names:true");
+        // %Issue: lambda unresolved
+        Options.v().setPhaseOption("jb", "model-lambdametafactory:false");
         // Need this to avoid the need to provide an entry point
         // Options.v().setPhaseOption("cg", "all-reachable:true");
 
@@ -326,6 +352,7 @@ public class LumosAgent {
         // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
         // SootClass.SIGNATURES);
         Scene.v().loadNecessaryClasses();
+        setEntryPoint();
     }
 
     public static void setExcludes() {
@@ -346,9 +373,59 @@ public class LumosAgent {
 
     public static void setIncludes() {
         includeList = new ArrayList<String>();
-        // includeList.add("java.lang.*");
         includeList.add("java.lang.*");
         includeList.add("java.util.*");
+
+        includeList.add("java.lang.invoke.*");
+        includeList.add("java.io.*");
+        includeList.add("java.text.*");
+        includeList.add("java.nio.*");
+        includeList.add("java.rmi.server.*");
+        includeList.add("java.sql.*");
+        includeList.add("java.security.*");
+        includeList.add("java.net.*");
+        includeList.add("java.math.*");
+        includeList.add("java.time.*");
+
+        includeList.add("javax.management.*");
+        includeList.add("javax.ws.rs.*");
+        includeList.add("javax.xml.*");
+        includeList.add("javax.net.*");
+        includeList.add("javax.crypto.*");
+        includeList.add("javax.security.*");
+        includeList.add("javax.naming.*");
+        includeList.add("javax.servlet.*");
+
+
+        includeList.add("com.sun.org.apache.*");
+        includeList.add("com.sun.jersey.*");
+        includeList.add("com.sun.jmx.*");
+        includeList.add("com.sun.xml.*");
+        includeList.add("com.sun.naming.*");
+        includeList.add("com.sun.java_cup.*");
+        includeList.add("com.sun.crypto.provider.*");
+        includeList.add("com.sun.net.ssl.*");
+        includeList.add("com.sun.research.*");
+
+        includeList.add("sun.security.*");
+        includeList.add("sun.net.*");
+        includeList.add("sun.text.*");
+        includeList.add("sun.nio.*");
+        includeList.add("sun.misc.*");
+        includeList.add("sun.management.*");
+        includeList.add("sun.util.*");
+        includeList.add("sun.invoke.util.*");
+        includeList.add("sun.reflect.*");
+
+        includeList.add("org.apache.commons.daemon.*");
+        includeList.add("org.xml.sax.*");
+        includeList.add("org.w3c.dom.*");
+        includeList.add("com.google.common.*");
+        includeList.add("jdk.internal.misc.*");
+        includeList.add("jdk.net.*");
+    
+        includeList.add("java.beans.*");
+        includeList.add("com.sun.beans.*");
         Options.v().set_include(includeList);
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
@@ -363,34 +440,77 @@ public class LumosAgent {
     public static void p(String s) {
         System.out.println(s);
     }
+    public static void setEntryPoint(){
+        List<SootMethod> entryList = new ArrayList<>();
+        SootClass nnClass = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNode");
+        SootMethod nnMain = nnClass.getMethodByName("main");
+        entryList.add(nnMain);
+        Scene.v().setEntryPoints(entryList);
+    }
 
     public static void setupClass(String service) {
         p("setting up class...");
-        for (Iterator<SootClass> iter = Scene.v().getApplicationClasses().snapshotIterator(); iter
-                .hasNext();) {
-            SootClass cls = iter.next();
-            List<SootMethod> sms = cls.getMethods();
-            for (SootMethod sm : sms) {
+/*
+        Options.v().setPhaseOption("cg", "safe-forname:true");
+        // Options.v().setPhaseOption("cg", "safe-newinstance:true");
+        Options.v().setPhaseOption("cg", "resolve-all-abstract-invokes:true");
+        Options.v().setPhaseOption("cg", "types-for-invoke:true");
+        Options.v().setPhaseOption("cg", "verbose:false");
+        Options.v().set_whole_program(true);
+        List<String> dynamicClasses = new ArrayList<>();
+        dynamicClasses.add("org.apache.hadoop.ipc.ProtobufRpcEngine");
+        Options.v().set_dynamic_class(dynamicClasses);
+        Scene.v().loadNecessaryClasses();
+
+        Transform sparkConfig = new Transform("cg.spark", null);
+        Options.v().setPhaseOption("cg", "verbose:false");
+        PhaseOptions.v().setPhaseOption(sparkConfig, "enabled:true");
+        // PhaseOptions.v().setPhaseOption(sparkConfig, "vta:true");
+        // PhaseOptions.v().setPhaseOption(sparkConfig, "on-fly-cg:false");
+        // PhaseOptions.v().setPhaseOption(sparkConfig, "types-for-sites:true");
+       // PhaseOptions.v().setPhaseOption(sparkConfig, "field-based:true");
+//       PhaseOptions.v().setPhaseOption(sparkConfig,"cs-demand:true");
+        // PhaseOptions.v().setPhaseOption(sparkConfig, "verbose:true");
+        PhaseOptions.v().setPhaseOption(sparkConfig, "apponly:false");
+        long start,end;
+        // 123
+        Map<String, String> phaseOptions = PhaseOptions.v().getPhaseOptions(sparkConfig);
+        p("starting spark pta...");
+        start = System.nanoTime();
+        SparkTransformer.v().transform(sparkConfig.getPhaseName(), phaseOptions);
+        end = System.nanoTime();
+        p("spark-2 time: " + (end-start)/1e9+" seconds");
+        // CHATransformer.v().transform();
+        // p("CHA done");
+        */
+        // Scene.v().getReachableMethods().listener().forEachRemaining(mc -> {
+        // Scene.v().getReachableMethods().listener().forEachRemaining( ->{
+        List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
+        for(String s:retrieveHistory){
+            // %Issue: lambda is currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+            SootMethod sm = Scene.v().getMethod(s);
+            // for (SootMethod sm : cls.getMethods()) {
                 if (sm.isAbstract() || sm.isNative()) {
-                    continue;
+                    return;
                 }
+                // System.out.println("reading " + sm);
                 sm.retrieveActiveBody();
-                // if(cls.getName().contains("App")){
-                //     p("## " + sm+":\n"+sm.getActiveBody());
-                // }
-                // addTask(new Runnable() {
-                    // @Override
-                // public void run() {
                 methodMap.put(sm.getSignature(), sm);
                 bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
-                // }
-                // });
-            }
+            // }
+            SootClass cls = sm.getDeclaringClass();
             classMap.put(cls.toString(), cls);
+            // if(cls.getName().contains("$lambda_")){
+            //     String pkg = cls.getPackageName();
+                
+            // }
         }
-        // taskSync();
-        // p("----Analysis Done------");
-        // analyzeReady = true;
+        // });
+        p("----Analysis Done------");
+        analyzeReady = true;
     }
 
     public static void analyzePath(String path) {
@@ -418,31 +538,50 @@ public class LumosAgent {
         // p("analyzeReady: " + analyzeReady);
     }
 
-    public static Body findBody(String name) {
-        for (String s : bodyMap.keySet()) {
-            if (s.contains(name)) {
-                return ((Body) bodyMap.get(s).clone());
-            }
-        }
-        return null;
+    // public static Body findBody(String name) {
+    //     for (String s : bodyMap.keySet()) {
+    //         if (s.contains(name)) {
+    //             return ((Body) bodyMap.get(s).clone());
+    //         }
+    //     }
+    //     return null;
+    // }
+
+    // public static Body findBodyNoClone(String name) {
+    //     for (String s : bodyMap.keySet()) {
+    //         if (s.contains(name)) {
+    //             return bodyMap.get(s);
+    //         }
+    //     }
+    //     return null;
+    // }
+    public static void loadBody (SootMethod sm){
+        sm.retrieveActiveBody();
     }
 
-    public static Body findBodyNoClone(String name) {
-        for (String s : bodyMap.keySet()) {
-            if (s.contains(name)) {
-                return bodyMap.get(s);
-            }
+    public static void loadBodies(SootClass sc){
+        for(SootMethod sm:sc.getMethods()){
+            loadBody(sm);
         }
-        return null;
     }
 
     public static SootMethod findMethod(String name) {
-        for (String s : methodMap.keySet()) {
-            if (s.contains(name)) {
-                return methodMap.get(s);
-            }
-        }
-        return null;
+        // if(name.contains("$lambda")){
+        //     String cname = name.substring(1,name.indexOf(":"));
+        //     SootClass sc =  Scene.v().getSootClass(cname);
+        //     String wrapperCname = cname.substring(0, cname.indexOf("$"));
+        //     p(cname+", " +sc+", " + wrapperCname);
+        //     SootClass wrapperCls = Scene.v().getSootClass(wrapperCname);
+        //     for(SootMethod sm:wrapperCls.getMethods()){
+        //         sm.retrieveActiveBody();
+        //         Body b = sm.getActiveBody();
+        //         if(b.toString().contains("$lambda")){
+        //             p(""+b);
+        //         }
+        //     }
+        //     sc.getMethods().forEach(m->{p(m+"");});
+        // }
+        return Scene.v().getMethod(name);
     }
 
     public static SootMethod findMethod(String... names) {
@@ -480,17 +619,56 @@ public class LumosAgent {
     }
 
     public static void addEntryMethods(){
-        // Global.addEntryMethods();
-        // LumosAgent.entryMethods = Global.entryMethods;
-        LumosAgent.entryMethods.add(Scene.v().getSootClass("com.mycompany.app.Work").getMethodByName("work"));
-        p(entryMethods+"");
-        for(SootMethod sm : entryMethods){
+        // LumosAgent.entryMethods.add(Scene.v().getSootClass("com.mycompany.app.Work").getMethodByName("work"));
+        SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer");
+        for(SootMethod sm : ecls.getMethods()){
+            String mname = sm.getName();
+            if (mname.equals("<init>") ||
+                    mname.equals("join") ||
+                    mname.equals("start") ||
+                    mname.equals("stop") ||
+                    mname.equals("<clinit>")) {
+                continue;
+            }
+            entryMethods.add(sm);
+        }
+
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor").
+                getMethodByName("pendingReplicationCheck"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.blockmanagement.DecommissionManager$Monitor").
+                getMethodByName("check"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager").
+                getMethodByName("heartbeatCheck"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
+                getMethodByName("computeDatanodeWork"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
+                getMethodByName("processPendingReplications"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+                getMethodByName("checkAvailableResources"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+                getMethodByName("nameNodeHasResourcesAvailable"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+                getMethodByName("enterSafeMode"));
+        entryMethods.add(Scene.v().getSootClass(
+            "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+                getMethodByName("isInSafeMode"));
+        p(entryMethods.size() + "");
+        for (SootMethod sm : entryMethods) {
             entryClasses.add(sm.getDeclaringClass().getName());
         }
 
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
-            Body b = findBodyNoClone(toggleM.toString());
+            Body b = getBody(toggleM);
+            // Body b = findBodyNoClone(toggleM.toString());
             List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             for (Stmt ret : CompileUtils.getReturnStmts(b)) {
@@ -500,9 +678,22 @@ public class LumosAgent {
             toggleM.setActiveBody(b);
         }
     }
+
+    // %Issue: currently we only support instrumenting once;
+    // the getBody should ideally cache original body for future instrumentation
+    public static Body getBody(SootMethod sm){
+            if(!sm.hasActiveBody()){
+                sm.retrieveActiveBody();
+            }
+            return sm.getActiveBody();
+    }
+
+    public static Body getBody(String s){
+        return getBody(Scene.v().getMethod(s));
+    }
     public static void turnOnRR(){
     }
-    public static void tplay() {
+    public static void lplay() {
         addEntryMethods();
         // turnOnRR();
         p("----Analysis Done------");
@@ -511,10 +702,49 @@ public class LumosAgent {
         // analyzePath(cpath);
     }
 
+    public static LInst fromSummary(String summary){
+        String[] items = summary.split(LInst.SEPARATOR);
+        String type = items[0];
+        SootMethod sm = LumosAgent.findMethod(items[1]);
+        sm.retrieveActiveBody();
+        String stmt = items[2];
+        int lineNum = Integer.valueOf(items[3]);
+        if(type.equals("concurrency")){
+            return new ConcurrencyInst(sm, stmt, lineNum, type);
+        }
+        else{
+            return new ValueRecordingInst(sm, stmt, lineNum, type);
+        }
+    }
     public static void readInsts() {
         p("reading inst files...");
-        for (String s : CompileUtils.readFrom("/home/jingyuan/lumos/inst")) {
-            LInst inst = LInst.fromSummary(s);
+        List<String> allInsts = CompileUtils.readFrom("/home/jingyuan/lumos/full_inst");
+        SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
+        SootMethod sm = sc.getMethodByName("<clinit>");
+        // for(SootMethod sm : sc.getMethods()){
+            // sm.retrieveActiveBody();
+            // for(Unit u : sm.getActiveBody().getUnits()){
+            //     Stmt stmt = (Stmt) u;
+            //     p(stmt+"");
+            //     if(stmt.containsInvokeExpr()){
+            //         InvokeExpr expr = stmt.getInvokeExpr();
+            //         if(expr.toString().contains("$lambda")){
+            //             p(expr+"");
+            //             p(expr.getMethod()+"");
+            //         }
+            //     }
+            // }
+        // }
+
+        for (String s : allInsts) {
+            // if(!s.contains("$lambda")){
+            //     continue;
+            // }
+            // %Issue: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+            LInst inst = fromSummary(s);
             activate(inst);
         }
     }
@@ -532,103 +762,120 @@ public class LumosAgent {
         Map<String, byte[]> cmap = new ConcurrentHashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : activeInsts.keySet()) {
+            // p("handling " + smstr + "...");
             SootMethod sm = Scene.v().getMethod(smstr);
             SootClass sclass = findClass(sm.getDeclaringClass().getName());
             if (checkSkipped(sclass)) {
                 continue;
             }
-            // if(!sclass.getName().contains("java.lang.")){ continue;}
+            // %Issue: this method is too large
+            if(sm.getSignature().contains("org.apache.hadoop.util.PureJavaCrc32: void <clinit>()")){ continue;}
+            // if(!sclass.getName().contains(")){ continue;}
             List<Stmt> targetstmts = new ArrayList<>();
             List<LInst> targetInsts = new ArrayList<>();
 
-            Body b = findBody(smstr);
+            Body b = (Body)getBody(smstr).clone();
             // p("?? " + b);
             addTask(new Runnable() {
                 @Override
                 public void run() {
-                    // This two-step way is needed to avoid inserted stmts
-                    // from breaking the labeling
-                    for (LInst inst : activeInsts.get(smstr)) {
-                        // inst.body = b;
-                        Stmt stmt = inst.getActualStmt(b);
-                        targetstmts.add(stmt);
-                        targetInsts.add(inst);
-                    }
-
-                    for (int i = 0; i < targetstmts.size(); i++) {
-                        // Stmt stmt = targetstmts.get(i);
-                        LInst inst = targetInsts.get(i);
-                        // if (!(inst instanceof ConcurrencyInst)) {
-                        // if(!sclass.getName().contains("app.App")){
-                        // }
-
-                        // try {
-                        inst.instrument(b);
-                        b.validate();
-                        // } catch (Exception e) {
+                    try {
+                        long start, end;
+                        start = System.nanoTime();
+                        // This two-step way is needed to avoid inserted stmts
+                        // from breaking the labeling
+                        for (LInst inst : activeInsts.get(smstr)) {
+                            Stmt stmt = inst.getActualStmt(b);
+                            targetstmts.add(stmt);
+                            targetInsts.add(inst);
+                        }
+                        for (int i = 0; i < targetstmts.size(); i++) {
+                            // if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
+                            //     break;
+                            // }
+                            LInst inst = targetInsts.get(i);
+                            inst.instrument(b);
+                            b.validate();
+                        }
                         // p(b+"");
-                        // e.printStackTrace();
-                        // throw new RuntimeException();
-                        // }
-                        // }
+                        sm.setActiveBody(b);
+                        end = System.nanoTime();
+                        // p("Time=" + (end-start)/1e9+"s");
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                    // p(b+"");
-                    sm.setActiveBody(b);
                 }
             });
             scToCompile.add(sclass);
         }
         taskSync();
-
+        p("Instrumentation done.");
+        p("Now compiling...");
         for (SootClass sclass : scToCompile) {
+            for(SootMethod sm: sclass.getMethods()){
+                if(!sm.hasActiveBody()){
+                    if(!sm.isAbstract() && !sm.isNative()){
+                        sm.retrieveActiveBody();
+                    }
+                }
+            }
+        
+            if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
+                Printer.v().printTo(sclass, new PrintWriter(System.out, true));
+                // compile("ChronoLocalDateTime", CompileUtils.compileClass(sclass));
+                // try {
+                //     Class<?> mc = Class.forName("org.apache.hadoop.hdfs.server.namenode.NameCache$UseCount",
+                //             true, LumosAgent.cloader);
+                    
+                    
+                //     for(Method m : mc.getMethods()){
+                //         System.out.println("J: " + m+" :: " + Modifier.toString(m.getModifiers()));
+                //     }
+                //     for(SootMethod mm : sclass.getMethods()){
+                //         System.out.println("S: " + mm.getSignature() + " :: " +
+                //                 Modifier.toString(mm.getModifiers()));
+                //     }
+                // } catch (ClassNotFoundException e) {
+                //     e.printStackTrace();
+                // }
+
+            }
             addTask(new Runnable() {
                 @Override
                 public void run() {
+                    try{
                     byte[] bytecode = CompileUtils.compileClass(sclass);
                     cmap.put(sclass.toString(), bytecode);
-                    // String dirname = "AAA";
-                    // File outputDir = new File(dirname);
-                    // if (!outputDir.exists()) {
-                    // outputDir.mkdir();
-                    // }
-                    // File file2 = new File(dirname + "/" + sclass.getName() + ".class");
-                    // FileOutputStream classout;
-                    // try {
-                    // classout = new FileOutputStream(file2);
-                    // classout.write(bytecode);
-                    // classout.close();
-                    // } catch (FileNotFoundException e) {
-                    // e.printStackTrace();
-                    // } catch (IOException e) {
-                    // e.printStackTrace();
-                    // }
+
+                    }
+                    catch(Exception e){
+                        e.printStackTrace();
+                    }
 
                 }
             });
-            // forTest = bytecode;
-            // if(sclass.getShortName().contains("IntWrappingSpliterator")){
-            //     try {
-            //         Class<?> mc = Class.forName("java.util.stream.StreamSpliterators$IntWrappingSpliterator");
-            //         p(mc.getClassLoader()+"");
-            //         for(Constructor<?> ct: mc.getConstructors()){
-            //             System.out.println("== "+ct+" :: " + Modifier.toString(ct.getModifiers()));
-            //         }
-            //         for(Method m : mc.getMethods()){
-            //             System.out.println("== "+m+" :: " + Modifier.toString(m.getModifiers()));
-            //         }
-            //     } catch (ClassNotFoundException e) {
-            //         e.printStackTrace();
-            //     }
-                
-            //     for(SootMethod mm : sclass.getMethods()){
-            //         System.out.println(mm.getSignature()+" :: " + Modifier.toString(mm.getModifiers()));
-
-            //     }
-
-            // }
         }
         taskSync();
+        p("Compilation done");
         return cmap;
+    }
+    public static void compile(String name, byte[] bytecode){
+        String dirname = "AAA";
+        File outputDir = new File(dirname);
+        if (!outputDir.exists()) {
+            outputDir.mkdir();
+        }
+        File file2 = new File(dirname + "/" + name + ".class");
+        FileOutputStream classout;
+        try {
+            classout = new FileOutputStream(file2);
+            classout.write(bytecode);
+            classout.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static Map<String, byte[]> instrumentOld() {
@@ -636,7 +883,8 @@ public class LumosAgent {
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : methodTPMap.keySet()) {
             SootMethod sm = findMethod(smstr);
-            Body b = findBody(sm.toString());
+            //Body b = findBody(sm.toString());
+            Body b = (Body)getBody(sm).clone();
             SootClass sclass = findClass(sm.getDeclaringClass().getName());
             List<Stmt> targetstmts = new ArrayList<>();
             List<LumosInstrumentation> targetInsts = new ArrayList<>();
@@ -693,7 +941,7 @@ public class LumosAgent {
     }
 
     public static void main(String args[]) {
-        tplay();
+        lplay();
     }
 
 }

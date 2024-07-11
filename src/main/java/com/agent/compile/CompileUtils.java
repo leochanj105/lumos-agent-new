@@ -391,18 +391,19 @@ public class CompileUtils {
         // Local tmpString2 = getLocal(body, "tmpString2", RefType.v("java.lang.String"));
         // SootMethod concatMethod = getMethod("java.lang.String", "java.lang.String concat(java.lang.String)");
         StringConstant fmtString = null;
-
+        String lmStr = "";
         // Local loggerLocal = findLocal(body, "loggerLocal");
         
         if (logger.equals("stdout")) {
             fmtString = StringConstant.v("[" + tag + "]=");
             // logMethod = getMethod("java.io.PrintStream", "void println(java.lang.String)");
             // logMethod = getMethod("com.lumos.trace.LumosTracer", "void logSysOut(java.lang.String)");
-            logMethod = getLogMethod("com.lumos.trace.LumosTracer","void logSysOut", ",java.lang.String)", v);
-        } else if (logger.equals("xtrace")) {
+            lmStr = "void logSysOut";
+        } else if (logger.equals("log4j")) {
+            lmStr = "void logTrace";
             fmtString = StringConstant.v("[" + tag + "]=");
         }
-
+        logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
         // Local bLocal = getLocal(body, "bLocal", BooleanType.v());
         //if (loggerLocal == null) {
         //    List<Stmt> initStmts = new ArrayList<>();
@@ -466,9 +467,9 @@ public class CompileUtils {
         //     stlist.add(assign(tmpString2, invoke(getValueOfMethod(v), v)));
         //     stlist.add(assign(tmpString1, invokeV(tmpString1, concatMethod, tmpString2)));
         // }
-        if (logger.equals("stdout")) {
+        // if (logger.equals("stdout")) {
             stlist.add(call(invoke(logMethod, v, fmtString)));
-        }
+        // }
         // turn on recording 
         // stlist.add(assign(objLocal, sref("<java.lang.Boolean: java.lang.Boolean TRUE>")));
         // stlist.add(call(invokeV(tlLocal, setm, objLocal)));
@@ -775,9 +776,11 @@ public class CompileUtils {
             boolean stmtMatched = stmt.toString().equals(stmtStr);
             
             boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
+            boolean fuzzyMatch = (stmtStr.contains("#") || stmt.toString().contains("#")) &&
+                    (FuzzySearch.ratio(stmt.toString(), stmtStr) > 80 && !(stmt.toString().contains("goto")));
+
             if (lineMatch) {
-                if(stmtMatched || 
-                        (FuzzySearch.ratio(stmt.toString(), stmtStr)>90 && !(stmt.toString().contains("goto")))){
+                if (stmtMatched || fuzzyMatch) {
                     return stmt;
                 }
             }
@@ -865,23 +868,6 @@ public class CompileUtils {
 
     public static byte[] compileClass(SootClass cl) {
         // System.out.println("compiling " + cl);
-        // if(cl.isFinal()){
-        //     System.out.println(cl.getName()+" is static");
-        // }
-        if(cl.getName().equals("com.mycompany.app.Work")){
-            // for(StackTraceElement e: (new Throwable()).getStackTrace()){
-            //     System.out.println(e.getMethodName());
-            // }
-            // try {
-            //     for (SootMethod sm : cl.getMethods()) {
-            //         System.out.println(sm.getActiveBody());
-            //     }
-            //     throw new RuntimeException();
-            // }
-            // catch(Exception e){
-            //     e.printStackTrace();
-            // }
-        }
         ByteArrayOutputStream bstream = new ByteArrayOutputStream(4096);
         try {
             BafASMBackend backend = new BafASMBackend(cl, 52);

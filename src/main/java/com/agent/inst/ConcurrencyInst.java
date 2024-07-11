@@ -39,6 +39,10 @@ public class ConcurrencyInst extends LInst{
         // Stmt negStmt = CompileUtils.assign(startLocal, Jimple.v().newNegExpr(startLocal));
         // Stmt diffStmt = CompileUtils.assign(endLocal, CompileUtils.ADD(startLocal, endLocal));
         PatchingChain<Unit> units = b.getUnits();
+        if(assignStmt == null){
+            System.out.println(assignStmt +"\n"+ stmt+"\n"+b);
+            // System.out.println(b);
+        }
         units.insertBefore(startStmt, assignStmt);
         List<Stmt> followings = new ArrayList<>();
         followings.add(endStmt);
@@ -61,12 +65,15 @@ public class ConcurrencyInst extends LInst{
             rid+=":R";
         }
         else{
+            System.out.println(stmt);
+            System.out.println(assignStmt);
             throw new RuntimeException("at least one side must be a ConcreteRef!");
         }
         Value toRec = null;
         if(target instanceof StaticFieldRef){
+            // No need to log base for static references
             rid += ":"+((StaticFieldRef)target).getField().getName()+"(S)";
-            toRec = StringConstant.v(((StaticFieldRef)target).getField().getDeclaringClass().getName());
+            // toRec = StringConstant.v(((StaticFieldRef)target).getField().getDeclaringClass().getName());
         }
         else if(target instanceof InstanceFieldRef){
             rid += ":"+((InstanceFieldRef)target).getField().toString();
@@ -78,11 +85,12 @@ public class ConcurrencyInst extends LInst{
             Value index = ((ArrayRef)target).getIndex();
             followings.addAll(CompileUtils.generateLog(b, endStmt, index, LumosAgent.logger, "INDEX"));
         }
-
-        Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
-        Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, toRec));
-        followings.add(astmt);
-        followings.addAll(CompileUtils.generateLog(b, endStmt, intLocal, LumosAgent.logger, rid));
+        if (toRec != null) {
+            Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
+            Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, toRec));
+            followings.add(astmt);
+            followings.addAll(CompileUtils.generateLog(b, endStmt, intLocal, LumosAgent.logger, rid));
+        }
         // */
         units.insertAfter(followings, assignStmt);
         return null;

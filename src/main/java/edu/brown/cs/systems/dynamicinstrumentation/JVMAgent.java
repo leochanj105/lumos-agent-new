@@ -21,7 +21,7 @@ import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
-
+import com.agent.AgentThread;
 import com.agent.LumosAgent;
 /**
  * Dynamic instrumentation by adding an agent lib to ourselves.
@@ -98,6 +98,8 @@ public class JVMAgent extends Agent {
         // System.out.println("[VVV] " + modifiedClassFiles);
         new Transformer(modifiedClassFiles).transform();
     }
+
+
     
     /** Transforms class files as they are reloaded */
     private class Transformer implements ClassFileTransformer {
@@ -105,7 +107,10 @@ public class JVMAgent extends Agent {
         public final Map<Class<?>, byte[]> classdata = Maps.newHashMap();
 
         public Class<?> getClassWithAgent(String className) throws ClassNotFoundException{
-            if(LumosAgent.cloader != null){
+            if(className.contains("$lambda_")){
+                return ClassUtils.getClass(AgentThread.lambdaLoader, className);
+            }
+            else if(LumosAgent.cloader != null){
                 return ClassUtils.getClass(LumosAgent.cloader, className);
             }
             else {
@@ -121,7 +126,6 @@ public class JVMAgent extends Agent {
                 } catch (ClassNotFoundException e) {
                     // If the class can't be found, just ignore it
                     // log.warn("Unable to reload class " + className, e);
-                    System.out.println("[VVV] can't find class");
                     e.printStackTrace();
                 }
             }
@@ -133,7 +137,12 @@ public class JVMAgent extends Agent {
             try {
                 Class<?>[] classList = classdata.keySet().toArray(new Class<?>[classdata.size()]);
                 instrumentation.retransformClasses(classList);
-            } finally {
+            } 
+            catch(Exception e){
+                System.out.println("[JVMAgent] " + classdata.keySet());
+                e.printStackTrace();
+            }
+            finally {
                 instrumentation.removeTransformer(this);
             }
         }
