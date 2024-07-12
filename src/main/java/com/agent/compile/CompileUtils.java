@@ -34,6 +34,7 @@ import soot.IntType;
 import soot.Local;
 import soot.PatchingChain;
 import soot.Printer;
+import soot.RefLikeType;
 import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
@@ -364,6 +365,15 @@ public class CompileUtils {
                 !(((IdentityStmt)stmt).getRightOp() instanceof CaughtExceptionRef);
     }
 
+    public static List<Stmt> generateClassLog(Body body, Stmt stmt, Value v, String logger, String tag){
+        StringConstant tagVal = StringConstant.v(tag);
+        SootMethod logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logClass");
+        Stmt invokeStmt = call(invoke(logMethod, v, tagVal));
+        List<Stmt> stlist = new ArrayList<>();
+        stlist.add(invokeStmt);
+        return stlist;
+    }
+
     public static List<Stmt> generateValueLog(Body body, Stmt stmt, Value v, String logger, String tag) {
         return generateValueLog(body, stmt, v, logger, tag, null, null, null);
     }
@@ -371,17 +381,24 @@ public class CompileUtils {
     public static List<Stmt> generateValueLog(Body body, Stmt stmt, Value v, String logger, String tag, 
             Value start, Value end, Value index){
         SootMethod logMethod = null;
-        StringConstant tagVal = StringConstant.v(tag+"=");
+        StringConstant tagVal = StringConstant.v(tag);
         Stmt invokeStmt = null;
         // if start/end is non-null we do timestamped trace
         if (start == null || end == null) {
-            String lmStr = "";
-            if (logger.equals("stdout")) {
-                lmStr = "void logSysOut";
-            } else if (logger.equals("log4j")) {
-                lmStr = "void logTrace";
+
+            Type t = v.getType();
+            // Value toRec = null;
+            if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
+                String lmStr = "";
+                if (logger.equals("stdout")) {
+                    lmStr = "void logSysOut";
+                } else if (logger.equals("log4j")) {
+                    lmStr = "void logTrace";
+                }
+                logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+            } else {
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
             }
-            logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
             invokeStmt = call(invoke(logMethod, v, tagVal));
         }
         else{

@@ -46,19 +46,18 @@ public class ValueRecordingInst extends LInst{
                 System.out.println("&&"+actualStmt+"\n"+ this.stmt);
                 System.out.println(sm.getActiveBody());
             }
-            Type t = v.getType();
-            Value toRec = null;
-            if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
-                toRec = v;
-            } else {
-                SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
-                Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
-                Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, v));
-                stmts.add(astmt);
-                toRec = intLocal;
-            }
-            List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, toRec, LumosAgent.logger,
-                    this.id + ":" + v);
+            // Type t = v.getType();
+            // Value toRec = null;
+            // if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
+            //     toRec = v;
+            // } else {
+            //     SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
+            //     Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
+            //     Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, v));
+            //     stmts.add(astmt);
+            //     toRec = intLocal;
+            // }
+            List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger, this.id);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
             if(actualStmt == null){
@@ -67,22 +66,20 @@ public class ValueRecordingInst extends LInst{
             InvokeExpr iexpr = actualStmt.getInvokeExpr();
             if (iexpr != null) {
                 if (iexpr instanceof InstanceInvokeExpr) {
-                    SootClass objc = Scene.v().getSootClass("java.lang.Object");
-                    SootMethod getcm = objc.getMethod("java.lang.Class getClass()");
-                    Local classLocal = CompileUtils.getLocal(b, "classLocal", getcm.getReturnType());
-                    Stmt astmt = CompileUtils.assign(classLocal,
-                            CompileUtils.invokeV((Local) ((InstanceInvokeExpr) iexpr).getBase(), getcm));
-                    // Stmt astmt = CompileUtils.assign(classLocal, NullConstant.v());
-                    stmts.add(astmt);
-                    List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, classLocal, LumosAgent.logger,
-                            this.id);
+                    // SootClass objc = Scene.v().getSootClass("java.lang.Object");
+                    // SootMethod getcm = objc.getMethod("java.lang.Class getClass()");
+                    // Local classLocal = CompileUtils.getLocal(b, "classLocal", getcm.getReturnType());
+                    // Stmt astmt = CompileUtils.assign(classLocal,
+                    //         CompileUtils.invokeV((Local) ((InstanceInvokeExpr) iexpr).getBase(), getcm));
+                    // stmts.add(astmt);
+                    List<Stmt> logStmt = CompileUtils.generateClassLog(b, actualStmt,
+                            ((InstanceInvokeExpr) iexpr).getBase(), LumosAgent.logger, this.id);
                     stmts.addAll(logStmt);
                 }
 
             }
         }
         if (CompileUtils.isParamIdentity(actualStmt)) {
-            // if(body == null){System.out.println(sm+"\n"+stmt.hashCode());}
             CompileUtils.insertAt(units, stmts, CompileUtils.firstStmt(b));
         } else {
             CompileUtils.insertAt(units, stmts, actualStmt);

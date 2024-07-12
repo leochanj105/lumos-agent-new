@@ -79,15 +79,15 @@ public class ConcurrencyInst extends LInst{
             toRec = ((ArrayRef)target).getBase();
             index = ((ArrayRef)target).getIndex();
         }
-        if (toRec != null) {
-            intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
-            Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, toRec));
-            followings.add(astmt);
-            followings.addAll(CompileUtils.generateValueLog(b, endStmt, intLocal, LumosAgent.logger, rid));
-        }
+        // if (toRec != null) {
+        //     intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
+        //     Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, toRec));
+        //     followings.add(astmt);
+        //     followings.addAll(CompileUtils.generateValueLog(b, endStmt, intLocal, LumosAgent.logger, rid));
+        // }
         // */
         followings.addAll(
-                CompileUtils.generateValueLog(b, endStmt, intLocal, LumosAgent.logger, rid,
+                CompileUtils.generateValueLog(b, endStmt, toRec, LumosAgent.logger, rid,
                         startLocal, endLocal, index));
         units.insertAfter(followings, assignStmt);
         return null;
