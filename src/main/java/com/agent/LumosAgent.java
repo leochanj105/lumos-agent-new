@@ -65,6 +65,7 @@ public class LumosAgent {
     // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
     // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
     public static String logger = "log4j";
+    public static String mode = "on";
 
     // public static String logger = "stdout";
     // public static String rrClass = "com.mycompany.app.App";
@@ -82,6 +83,7 @@ public class LumosAgent {
     public static String cpath = "";
     public static List<String> includeList;
     public static List<String> processList;
+    // public static boolean 
 
     public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
 
@@ -185,6 +187,7 @@ public class LumosAgent {
             e.printStackTrace();
         }
         inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
+        mode = System.getProperty("mode");
         // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
 
         // inst.appendToBootstrapClassLoaderSearch(slf4j_log4j12JarFile);
@@ -491,10 +494,14 @@ public class LumosAgent {
             if(s.contains("$lambda_")){
                 continue;
             }
+            if(s.contains("log4j")){
+                continue;
+            }
             SootMethod sm = Scene.v().getMethod(s);
             // for (SootMethod sm : cls.getMethods()) {
                 if (sm.isAbstract() || sm.isNative()) {
-                    return;
+                    continue;
+                
                 }
                 // System.out.println("reading " + sm);
                 sm.retrieveActiveBody();
@@ -718,7 +725,8 @@ public class LumosAgent {
     }
     public static void readInsts() {
         p("reading inst files...");
-        List<String> allInsts = CompileUtils.readFrom("/home/jingyuan/lumos/full_inst");
+        String instFile = System.getProperty("instFile");
+        List<String> allInsts = CompileUtils.readFrom(instFile);
         SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
         SootMethod sm = sc.getMethodByName("<clinit>");
         // for(SootMethod sm : sc.getMethods()){
@@ -750,6 +758,9 @@ public class LumosAgent {
     }
 
     public static void activate(LInst inst) {
+        // if(inst instanceof ConcurrencyInst){
+        //     return;
+        // }
         if (allInsts.contains(inst)) {
             return;
         }
@@ -794,7 +805,9 @@ public class LumosAgent {
                             //     break;
                             // }
                             LInst inst = targetInsts.get(i);
-                            inst.instrument(b);
+                            if(!mode.equals("off")){
+                                inst.instrument(b);
+                            }
                             b.validate();
                         }
                         // p(b+"");
