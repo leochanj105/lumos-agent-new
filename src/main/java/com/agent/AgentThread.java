@@ -327,9 +327,9 @@ public class AgentThread implements Runnable, MessageHandler {
         String basePath = "/home/jingyuan/hadoop";
         String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
         String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
-        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/common/lib/";
-        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/hdfs/lib/";
-        String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.0.0-alpha/share/hadoop/httpfs/tomcat/lib/";
+        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
+        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
+        String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
         String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
         List<String> jpaths = new ArrayList<String>();
@@ -343,6 +343,8 @@ public class AgentThread implements Runnable, MessageHandler {
         apaths.addAll(cpaths);
         apaths.add(LumosAgent.tracerJar);
         cpaths.addAll(jpaths);
+        String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
+        cpaths.add(jrePath);
         LumosAgent.setupSoot(cpaths, apaths);
         LumosAgent.setupClass("hdfs");
         LumosAgent.lplay();

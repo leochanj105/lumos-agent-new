@@ -323,7 +323,7 @@ public class LumosAgent {
         }
         Options.v().set_soot_classpath(classpath);
         Options.v().set_java_version(8);
-        processList = new ArrayList<String>();
+        // processList = new ArrayList<String>();
 
         Options.v().set_process_dir(pdir);
 
@@ -367,7 +367,8 @@ public class LumosAgent {
                 "org.apache.hadoop.http.*",
                 "org.apache.hadoop.hdfs.web.*",
                 "org.apache.hadoop.hdfs.server.datanode.*",
-                "org.apache.hadoop.fs.shell.*" };
+                "org.apache.hadoop.fs.shell.*",
+                "edu.brown.cs.*"};
         List<String> excludePackagesList = Arrays.asList(exClasses);
         Options.v().set_exclude(excludePackagesList);
         Options.v().set_no_bodies_for_excluded(true);

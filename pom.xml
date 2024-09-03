@@ -273,32 +273,75 @@
                     <!-- </execution> -->
                 </executions>
             </plugin>
+            <!-- <plugin> -->
+            <!--     <groupId>org.apache.maven.plugins</groupId> -->
+            <!--     <artifactId>maven-assembly-plugin</artifactId> -->
+            <!--     <version>3.3.0</version> -->
+            <!--     <!-1- <appendAssemblyId>false</appendAssemblyId> -1-> -->
+            <!--     <configuration> -->
+            <!--         <finalName>LumosAgent</finalName> -->
+            <!--         <archive> -->
+            <!--             <manifestEntries> -->
+            <!--                 <Premain-Class>com.agent.LumosAgent</Premain-Class> -->
+            <!--                 <Agent-Class>com.agent.LumosAgent</Agent-Class> -->
+            <!--                 <Can-Redefine-Classes>true</Can-Redefine-Classes> -->
+            <!--                 <Can-Retransform-Classes>true</Can-Retransform-Classes> -->
+            <!--             </manifestEntries> -->
+            <!--         </archive> -->
+            <!--         <descriptorRefs> -->
+            <!--             <descriptorRef>jar-with-dependencies</descriptorRef> -->
+            <!--         </descriptorRefs> -->
+            <!--     </configuration> -->
+            <!--     <executions> -->
+            <!--         <execution> -->
+            <!--             <id>make-assembly</id> <!-1- this is used for inheritance merges -1-> -->
+            <!--             <phase>package</phase> <!-1- bind to the packaging phase -1-> -->
+            <!--             <goals> -->
+            <!--                 <goal>single</goal> -->
+            <!--             </goals> -->
+            <!--         </execution> -->
+            <!--     </executions> -->
+            <!-- </plugin> -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
-                <!-- <appendAssemblyId>false</appendAssemblyId> -->
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
                 <configuration>
                     <finalName>LumosAgent</finalName>
-                    <archive>
-                        <manifestEntries>
-                            <Premain-Class>com.agent.LumosAgent</Premain-Class>
-                            <Agent-Class>com.agent.LumosAgent</Agent-Class>
-                            <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                            <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                        </manifestEntries>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
+                    <!-- <archive> -->
+                    <!-- <manifestEntries> -->
+                    <!-- <manifest> -->
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <manifestEntries>
+                                <Premain-Class>com.agent.LumosAgent</Premain-Class>
+                                <Agent-Class>com.agent.LumosAgent</Agent-Class>
+                                <Can-Redefine-Classes>true</Can-Redefine-Classes>
+                                <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                            </manifestEntries>
+                        </transformer>
+                    </transformers>
+                    <!-- </manifest> -->
+                    <!-- </manifestEntries> -->
+                    <!-- </archive> -->
+                    <!-- <descriptorRefs> -->
+                    <!--     <descriptorRef>jar-with-dependencies</descriptorRef> -->
+                        <!-- </descriptorRefs> -->
                 </configuration>
                 <executions>
                     <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <phase>package</phase>
                         <goals>
-                            <goal>single</goal>
+                            <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.objectweb.asm</pattern>
+                                    <shadedPattern>org.shaded.objectweb.asm</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

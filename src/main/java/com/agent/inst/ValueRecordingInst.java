@@ -46,17 +46,6 @@ public class ValueRecordingInst extends LInst{
                 System.out.println("&&"+actualStmt+"\n"+ this.stmt);
                 System.out.println(sm.getActiveBody());
             }
-            // Type t = v.getType();
-            // Value toRec = null;
-            // if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
-            //     toRec = v;
-            // } else {
-            //     SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
-            //     Local intLocal = CompileUtils.getLocal(b, "intLocal", IntType.v());
-            //     Stmt astmt = CompileUtils.assign(intLocal, CompileUtils.invoke(hashm, v));
-            //     stmts.add(astmt);
-            //     toRec = intLocal;
-            // }
             List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger, this.id);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
