@@ -12,6 +12,7 @@ import org.apache.commons.lang3.ClassUtils;
 // import org.slf4j.Logger;
 // import org.slf4j.LoggerFactory;
 
+import com.agent.LumosAgent;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -20,26 +21,8 @@ import com.google.common.collect.Sets;
 
 import javassist.CannotCompileException;
 import javassist.ClassPool;
-import javassist.NotFoundException;
 import javassist.LoaderClassPath;
-
-import java.util.jar.JarFile;
-import java.util.jar.JarEntry;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Collections;
-
-import java.lang.ClassLoader;
-
-import com.agent.LumosAgent;
+import javassist.NotFoundException;
 /** Does class reloading, modification, and hotswapping using Javassist to rewrite classes. The actual hotswapping
  * implementation is abstract since there are more than one way to do it */
 public abstract class Agent {

@@ -4,11 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,7 +26,6 @@ import com.agent.inst.ValueRecordingInst;
 import soot.Body;
 import soot.G;
 import soot.PatchingChain;
-import soot.Printer;
 import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
@@ -74,6 +70,8 @@ public class LumosAgent {
     public static Set<String> entryClasses = new HashSet<>();
     public static String rrClass = "com.lumos.tracer.LumosTracer";
     public static String tracerJar = "/tmp/LumosTracer.jar";
+    public static String bootstrapJar = "/tmp/LumosTracer-bootstrap.jar";
+    public static String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
     
     public static byte[] forTest;
     public static String testclass;
@@ -178,15 +176,20 @@ public class LumosAgent {
         JarFile tracerJarFile = null;
         JarFile slf4jJarFile = null;
         JarFile slf4j_log4j12JarFile = null;
-        try {
-            tracerJarFile = new JarFile(tracerJar);
-            // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
 
+        JarFile toolsJarFile = null;
+        try {
+            tracerJarFile = new JarFile(bootstrapJar);
+            // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
+            toolsJarFile = new JarFile("/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar");
             // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
         } catch (IOException e) {
             e.printStackTrace();
         }
         inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
+        // if(inst !=null)
+        //     return;
+        // inst.appendToBootstrapClassLoaderSearch(toolsJarFile);
         mode = System.getProperty("mode");
         // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
 
@@ -496,6 +499,9 @@ public class LumosAgent {
                 continue;
             }
             if(s.contains("log4j")){
+                continue;
+            }
+            if(s.contains("edu.brown.cs")){
                 continue;
             }
             SootMethod sm = Scene.v().getMethod(s);

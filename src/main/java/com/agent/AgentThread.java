@@ -3,13 +3,14 @@ package com.agent;
 import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -318,12 +319,33 @@ public class AgentThread implements Runnable, MessageHandler {
     public void run() {
         System.out.println("Agent thread started");
         // Wait Until we hooked the Spring classloader
-
         while (LumosAgent.cloader == null) {
             sleep(500);
         }
+
         System.out.println("Agent ready");
         System.out.println(System.getProperty("java.version"));
+        // register appClassLoader loaded tracer with LumosGlobal
+        ClassLoader appLoader = LumosAgent.cloader;
+        Class<?> tracerClass;
+        try {
+            tracerClass = Class.forName("com.lumos.tracer.LumosRegister", true, appLoader);
+            System.out.println(tracerClass);
+            Method rm = tracerClass.getMethod("registerTracer");
+            rm.invoke(null);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
         String basePath = "/home/jingyuan/hadoop";
         String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
         String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
@@ -343,8 +365,8 @@ public class AgentThread implements Runnable, MessageHandler {
         apaths.addAll(cpaths);
         apaths.add(LumosAgent.tracerJar);
         cpaths.addAll(jpaths);
-        String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
-        cpaths.add(jrePath);
+        // String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
+        cpaths.add(LumosAgent.jrePath);
         LumosAgent.setupSoot(cpaths, apaths);
         LumosAgent.setupClass("hdfs");
         LumosAgent.lplay();
