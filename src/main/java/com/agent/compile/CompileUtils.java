@@ -420,6 +420,14 @@ public class CompileUtils {
         return stlist;
     }
 
+    public static List<Stmt> generateDebugLog(Body body, Stmt stmt, String tag, Value start, Value end){
+        List<Stmt> stlist = new ArrayList<>();
+        SootMethod logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logDebug2");
+        StringConstant tagVal = StringConstant.v(tag);
+        stlist.add(call(invoke(logMethod, tagVal, start, end)));
+        return stlist;
+    }
+
     
     public static Stmt call(InvokeExpr expr){
         return Jimple.v().newInvokeStmt(expr);

@@ -216,7 +216,6 @@ public class AgentThread implements Runnable, MessageHandler {
             if(s.contains("$lambda_")){
                 actualLoader = lambdaLoader;
                 lambdaLoader.setByteCode(s, cmap.get(s));
-
             }
             LumosAgent.p("reloading " + s);
             try {

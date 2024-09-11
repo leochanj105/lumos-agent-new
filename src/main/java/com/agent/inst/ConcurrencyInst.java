@@ -27,7 +27,6 @@ public class ConcurrencyInst extends LInst{
     @Override
     public List<Stmt> instrument(Body b) {
         SootClass sysc = LumosAgent.findClassExact("java.lang.System");
-
         SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
         SootMethod timem = sysc.getMethod("long nanoTime()");
         AssignStmt assignStmt = (AssignStmt) getActualStmt(b);
@@ -39,13 +38,19 @@ public class ConcurrencyInst extends LInst{
         // Stmt negStmt = CompileUtils.assign(startLocal, Jimple.v().newNegExpr(startLocal));
         // Stmt diffStmt = CompileUtils.assign(endLocal, CompileUtils.ADD(startLocal, endLocal));
         PatchingChain<Unit> units = b.getUnits();
+        List<Stmt> followings = new ArrayList<>();
         if(assignStmt == null){
             System.out.println(assignStmt +"\n"+ stmt+"\n"+b);
             // System.out.println(b);
         }
         units.insertBefore(startStmt, assignStmt);
-        List<Stmt> followings = new ArrayList<>();
         followings.add(endStmt);
+
+        // if (b.getMethod().getDeclaringClass().getShortName().equals("FSNamesystem")) {
+        //     followings.addAll(CompileUtils.generateDebugLog(b,  assignStmt, this.id, startLocal, endLocal));
+        //     units.insertAfter(followings, assignStmt);
+        //     return null;
+        // }
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, startLocal, LumosAgent.logger, "s"));
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, endLocal, LumosAgent.logger, "e"));
 

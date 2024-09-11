@@ -27,6 +27,10 @@ public abstract class LInst{
     // }
     public abstract List<Stmt> instrument(Body b);
     // public abstract boolean isBefore();
+    @Override
+    public String toString(){
+        return id;
+    }
     
     public LInst(SootMethod sm, String stmt, int lineNum, Value mayRecord, String type) {
         this.sm = sm;
@@ -34,8 +38,8 @@ public abstract class LInst{
         this.lineNum = lineNum;
         this.mayRecord = mayRecord;
         this.type = type;
-        // this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
-        this.id = currId.getAndIncrement()+"";
+        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        // this.id = currId.getAndIncrement()+"";
     }
     public abstract String getType();
     public String toSummary(){
