@@ -67,6 +67,7 @@ public class LumosAgent {
     // public static String rrClass = "com.mycompany.app.App";
     
     public static Set<SootMethod> entryMethods = new HashSet<>();
+    public static Set<SootMethod> boundaryMethods = new HashSet<>();
     public static Set<String> entryClasses = new HashSet<>();
     public static String rrClass = "com.lumos.tracer.LumosTracer";
     public static String tracerJar = "/tmp/LumosTracer.jar";
@@ -479,6 +480,10 @@ public class LumosAgent {
     public static void p(String s) {
         System.out.println(s);
     }
+
+    public static void p(Object s) {
+        p(s+"");
+    }
     public static void setEntryPoint(){
         List<SootMethod> entryList = new ArrayList<>();
         SootClass nnClass = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNode");
@@ -693,6 +698,30 @@ public class LumosAgent {
         }
     }
 
+    public static void addBoundaries() {
+        SootClass clder = Scene.v().getSootClass("java.lang.ClassLoader");
+        for(SootMethod sm : clder.getMethods()){
+            String sname = sm.getName();
+            if(sname.equals("loadClass") ||
+                    sname.equals("getClassLoadingLock")){
+                boundaryMethods.add(sm);
+            }
+        }
+        for (SootMethod bm : boundaryMethods) {
+            p("adding to " + bm.getName());
+            Body b = getBody(bm);
+
+            List<Stmt> stmts = CompileUtils.generateRRsave(b, getRRField());
+            stmts.addAll(CompileUtils.generateRRtoggle(b, getRRField(), false));
+            CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
+            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                stmts = CompileUtils.generateRRrestore(b, getRRField());
+                b.getUnits().insertBefore(stmts, ret);
+            }
+            bm.setActiveBody(b);
+            p(b);
+        }
+    }
     // %Issue: currently we only support instrumenting once;
     // the getBody should ideally cache original body for future instrumentation
     public static Body getBody(SootMethod sm){
@@ -709,6 +738,7 @@ public class LumosAgent {
     }
     public static void lplay() {
         addEntryMethods();
+        addBoundaries();
         // turnOnRR();
         p("----Analysis Done------");
         analyzeReady = true;
@@ -846,6 +876,8 @@ public class LumosAgent {
         taskSync();
         p("Instrumentation done.");
         p("Now compiling...");
+        entryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
+        boundaryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
         for (SootClass sclass : scToCompile) {
             for(SootMethod sm: sclass.getMethods()){
                 if(!sm.hasActiveBody()){

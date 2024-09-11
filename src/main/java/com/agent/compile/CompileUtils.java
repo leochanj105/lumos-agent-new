@@ -177,6 +177,23 @@ public class CompileUtils {
         return insts;
     }
 
+    
+    public static List<Stmt> generateRRrestore(Body body, String field){
+        List<Stmt> insts = new ArrayList<>();
+        Local bLocal = getLocal(body, "bLocalSave", IntType.v());
+        SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void toggle(boolean)");
+        insts.add(call(invoke(togglem, bLocal)));
+        return insts;
+    }
+
+    public static List<Stmt> generateRRsave(Body body, String field){
+        List<Stmt> insts = new ArrayList<>();
+        Local bLocal = getLocal(body, "bLocalSave", IntType.v());
+        SootMethod getm = getMethod("com.lumos.tracer.LumosTracer", "boolean getRR()");
+        insts.add(assign(bLocal, invoke(getm)));
+        return insts;
+    }
+
     public static List<Stmt> generateRRtoggle(Body body, String field, boolean isOn){
         List<Stmt> insts = new ArrayList<>();
         Local bLocal = getLocal(body, "bLocal", IntType.v());
