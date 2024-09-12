@@ -68,6 +68,7 @@ public class LumosAgent {
     
     public static Set<SootMethod> entryMethods = new HashSet<>();
     public static Set<SootMethod> boundaryMethods = new HashSet<>();
+    public static Set<SootMethod> pausedMethods = new HashSet<>();
     public static Set<String> entryClasses = new HashSet<>();
     public static String rrClass = "com.lumos.tracer.LumosTracer";
     public static String tracerJar = "/tmp/LumosTracer.jar";
@@ -404,7 +405,8 @@ public class LumosAgent {
                 "org.apache.hadoop.hdfs.web.*",
                 "org.apache.hadoop.hdfs.server.datanode.*",
                 "org.apache.hadoop.fs.shell.*",
-                "edu.brown.cs.*"};
+                // "edu.brown.cs.*"
+        };
         List<String> excludePackagesList = Arrays.asList(exClasses);
         Options.v().set_exclude(excludePackagesList);
         Options.v().set_no_bodies_for_excluded(true);
@@ -646,7 +648,8 @@ public class LumosAgent {
                     mname.equals("start") ||
                     mname.equals("stop") ||
                     mname.equals("<clinit>") ||
-                    mname.equals("checkNNStartup")) {
+                    mname.equals("checkNNStartup") ||
+                    (!mname.equals("getFileInfo"))) {
                 continue;
             }
             entryMethods.add(sm);
@@ -707,10 +710,36 @@ public class LumosAgent {
                 boundaryMethods.add(sm);
             }
         }
+        SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
+        boundaryMethods.add(sm);
         for (SootMethod bm : boundaryMethods) {
             p("adding to " + bm.getName());
             Body b = getBody(bm);
 
+            List<Stmt> stmts = CompileUtils.generateRRsave(b, getRRField());
+            stmts.addAll(CompileUtils.generateRRtoggle(b, getRRField(), false));
+            CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
+            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                stmts = CompileUtils.generateRRrestore(b, getRRField());
+                b.getUnits().insertBefore(stmts, ret);
+            }
+            bm.setActiveBody(b);
+            p(b);
+        }
+    }
+
+    public static void addPauseStmts(){
+        SootClass clder = Scene.v().getSootClass("org.apache.hadoop.util.Shell");
+        for(SootMethod sm : clder.getMethods()){
+            String sname = sm.getName();
+            if(sname.equals("runCommand")){
+                pausedMethods.add(sm);
+            }
+        }
+        for (SootMethod bm : pausedMethods) {
+            p("adding to " + bm.getName());
+            Body b = getBody(bm);
+            
             List<Stmt> stmts = CompileUtils.generateRRsave(b, getRRField());
             stmts.addAll(CompileUtils.generateRRtoggle(b, getRRField(), false));
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);

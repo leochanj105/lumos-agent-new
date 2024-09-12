@@ -351,6 +351,7 @@ public class AgentThread implements Runnable, MessageHandler {
         String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
         String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
         String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
+        String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
         String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
         List<String> jpaths = new ArrayList<String>();
@@ -358,13 +359,16 @@ public class AgentThread implements Runnable, MessageHandler {
         readJars(commonJarPath, jpaths);
         readJars(hdfsJarPath, jpaths);
         readJars(httpfsJarPath, jpaths);
+        // readJars(btracePath, jpaths);
         cpaths.add(commonPath);
         cpaths.add(hdfsPath);
+        cpaths.add(btracePath);
         // cpaths.add(testPath);
         apaths.addAll(cpaths);
         apaths.add(LumosAgent.tracerJar);
         cpaths.addAll(jpaths);
         // String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
+        // cpaths.add(btracePath);
         cpaths.add(LumosAgent.jrePath);
         LumosAgent.setupSoot(cpaths, apaths);
         LumosAgent.setupClass("hdfs");
