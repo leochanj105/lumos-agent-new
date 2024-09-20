@@ -45,12 +45,14 @@ public class ConcurrencyInst extends LInst{
         }
         units.insertBefore(startStmt, assignStmt);
         followings.add(endStmt);
-
-        // if (b.getMethod().getDeclaringClass().getShortName().equals("FSNamesystem")) {
-        //     followings.addAll(CompileUtils.generateDebugLog(b,  assignStmt, this.id, startLocal, endLocal));
-        //     units.insertAfter(followings, assignStmt);
-        //     return null;
-        // }
+        String debugc = System.getProperty("debugc");
+        String debugm = System.getProperty("debugm");
+        if ((debugc != null && b.getMethod().getDeclaringClass().getShortName().equals(debugc)) 
+                && (debugm != null && b.getMethod().getName().equals(debugm))) {
+            followings.addAll(CompileUtils.generateDebugLog(b,  assignStmt, this.id, startLocal, endLocal));
+            units.insertAfter(followings, assignStmt);
+            return null;
+        }
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, startLocal, LumosAgent.logger, "s"));
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, endLocal, LumosAgent.logger, "e"));
 

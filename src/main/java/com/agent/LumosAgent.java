@@ -643,13 +643,14 @@ public class LumosAgent {
         SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer");
         for(SootMethod sm : ecls.getMethods()){
             String mname = sm.getName();
+            String specialName = System.getProperty("specialName");
             if (mname.equals("<init>") ||
                     mname.equals("join") ||
                     mname.equals("start") ||
                     mname.equals("stop") ||
                     mname.equals("<clinit>") ||
                     mname.equals("checkNNStartup") ||
-                    (!mname.equals("getFileInfo"))) {
+                    (specialName != null && !mname.equals(specialName))) {
                 continue;
             }
             entryMethods.add(sm);
@@ -701,18 +702,42 @@ public class LumosAgent {
         }
     }
 
+    public static void addAsBoundary(String sc){
+        addAsBoundary(Scene.v().getSootClass(sc));
+    }
+    public static void addAsBoundary(SootClass sc){
+        for(SootMethod sm : sc.getMethods()){
+            boundaryMethods.add(sm);
+        }
+    }
+
     public static void addBoundaries() {
-        SootClass clder = Scene.v().getSootClass("java.lang.ClassLoader");
-        for(SootMethod sm : clder.getMethods()){
-            String sname = sm.getName();
-            if(sname.equals("loadClass") ||
-                    sname.equals("getClassLoadingLock")){
-                boundaryMethods.add(sm);
+        addAsBoundary("java.lang.ClassLoader");
+        // for(SootMethod sm : clder.getMethods()){
+        //     String sname = sm.getName();
+        //     if(sname.equals("loadClass") ||
+        //             sname.equals("getClassLoadingLock")){
+        //         boundaryMethods.add(sm);
+        //     }
+        // }
+        
+        for(SootClass sc: Scene.v().getClasses()){
+            String pkg = sc.getPackageName();
+            if(pkg.startsWith("edu.brown.cs")){
+                p("!!! " + sc.getName());
+                addAsBoundary(sc);
             }
         }
-        SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
-        boundaryMethods.add(sm);
+        // addAsBoundary("edu.brown.cs.systems.xtrace.wrappers.CommonsLogWrapper");
+        // addAsBoundary("edu.brown.cs.systems.baggage.Baggage");
+        // addAsBoundary("edu.brown.cs.systems.xtrace.wrappers.CommonsLogWrapper");
+        // SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
+        // boundaryMethods.add(sm);
+
         for (SootMethod bm : boundaryMethods) {
+            if(bm.isPhantom() || bm.getSource() == null){
+                continue;
+            }
             p("adding to " + bm.getName());
             Body b = getBody(bm);
 
@@ -724,7 +749,7 @@ public class LumosAgent {
                 b.getUnits().insertBefore(stmts, ret);
             }
             bm.setActiveBody(b);
-            p(b);
+            // p(b);
         }
     }
 
@@ -887,10 +912,10 @@ public class LumosAgent {
                             }
                             b.validate();
                         }
-                        if (smstr.contains("AtomicBoolean: boolean get")) {
-                            p("## " + smstr);
-                            p(b + "");
-                        }
+                        // if (smstr.contains("AtomicBoolean: boolean get")) {
+                        //     p("## " + smstr);
+                        //     p(b + "");
+                        // }
                         sm.setActiveBody(b);
                         end = System.nanoTime();
                         // p("Time=" + (end-start)/1e9+"s");

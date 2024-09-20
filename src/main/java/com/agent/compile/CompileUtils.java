@@ -439,9 +439,9 @@ public class CompileUtils {
 
     public static List<Stmt> generateDebugLog(Body body, Stmt stmt, String tag, Value start, Value end){
         List<Stmt> stlist = new ArrayList<>();
-        SootMethod logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logDebug2");
+        SootMethod logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logDebug");
         StringConstant tagVal = StringConstant.v(tag);
-        stlist.add(call(invoke(logMethod, tagVal, start, end)));
+        stlist.add(call(invoke(logMethod, tagVal)));
         return stlist;
     }
 
