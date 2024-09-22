@@ -12,6 +12,7 @@ import soot.Value;
 import soot.jimple.Stmt;
 
 public abstract class LInst{
+    public static String verbose = System.getProperty("verbose");
     public static String SEPARATOR = ",,";
     public static AtomicInteger currId = new AtomicInteger(0);
     public String type;
@@ -31,6 +32,10 @@ public abstract class LInst{
     public String toString(){
         return id;
     }
+
+    public boolean verbose(){
+        return verbose == null ? false : verbose.equals("true");
+    }
     
     public LInst(SootMethod sm, String stmt, int lineNum, Value mayRecord, String type) {
         this.sm = sm;
@@ -38,8 +43,11 @@ public abstract class LInst{
         this.lineNum = lineNum;
         this.mayRecord = mayRecord;
         this.type = type;
-        this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
-        // this.id = currId.getAndIncrement()+"";
+        if (verbose()) {
+            this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        } else {
+            this.id = currId.getAndIncrement() + "";
+        }
     }
     public abstract String getType();
     public String toSummary(){

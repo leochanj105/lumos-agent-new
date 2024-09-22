@@ -83,6 +83,7 @@ public class LumosAgent {
     public static String cpath = "";
     public static List<String> includeList;
     public static List<String> processList;
+    public static Set<SootClass> baseInstClasses = new HashSet<>();
     // public static boolean 
 
     public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
@@ -397,9 +398,10 @@ public class LumosAgent {
 
     public static void setExcludes() {
         String[] exClasses = { "org.apache.hadoop.ant.*",
-                "org.apache.hadoop.record.*", "org.apache.hadoop.metrics.*",
+                "org.apache.hadoop.record.*", 
                 "org.apache.hadoop.log.*",
-                "org.apache.hadoop.metrics2.*",
+                //"org.apache.hadoop.metrics2.*",
+                //"org.apache.hadoop.metrics.*",
                 "org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer",
                 "org.apache.hadoop.http.*",
                 "org.apache.hadoop.hdfs.web.*",
@@ -691,7 +693,6 @@ public class LumosAgent {
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
-            // Body b = findBodyNoClone(toggleM.toString());
             List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             for (Stmt ret : CompileUtils.getReturnStmts(b)) {
@@ -707,6 +708,9 @@ public class LumosAgent {
     }
     public static void addAsBoundary(SootClass sc){
         for(SootMethod sm : sc.getMethods()){
+            // if(sc.getShortName().equals("ClassLoader")){
+            //     p("## " + sm +", " + sm.getSource() +", " + sm.hasActiveBody());
+            // }
             boundaryMethods.add(sm);
         }
     }
@@ -723,24 +727,30 @@ public class LumosAgent {
         
         for(SootClass sc: Scene.v().getClasses()){
             String pkg = sc.getPackageName();
-            if(pkg.startsWith("edu.brown.cs")){
-                p("!!! " + sc.getName());
-                addAsBoundary(sc);
+            if(pkg.startsWith("edu.brown.cs") || pkg.contains("metrics")){
+                if(sc.resolvingLevel() >= SootClass.BODIES){
+                    addAsBoundary(sc);
+                }
             }
         }
-        // addAsBoundary("edu.brown.cs.systems.xtrace.wrappers.CommonsLogWrapper");
+        
+        // addAsBoundary("org.apache.hadoop.ipc.Server$ExceptionsHandler");
         // addAsBoundary("edu.brown.cs.systems.baggage.Baggage");
-        // addAsBoundary("edu.brown.cs.systems.xtrace.wrappers.CommonsLogWrapper");
-        // SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
-        // boundaryMethods.add(sm);
+        SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
+        boundaryMethods.add(sm);
 
         for (SootMethod bm : boundaryMethods) {
-            if(bm.isPhantom() || bm.getSource() == null){
+            // if(!bm.hasActiveBody() && bm.getSource() == null){
+            //     continue;
+            // }
+            Body b;
+            try {
+                b = getBody(bm);
+            } catch (RuntimeException e) {
                 continue;
             }
-            p("adding to " + bm.getName());
-            Body b = getBody(bm);
 
+            p("adding to " + bm.getName());
             List<Stmt> stmts = CompileUtils.generateRRsave(b, getRRField());
             stmts.addAll(CompileUtils.generateRRtoggle(b, getRRField(), false));
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
@@ -751,6 +761,23 @@ public class LumosAgent {
             bm.setActiveBody(b);
             // p(b);
         }
+
+        
+        SootMethod ehm = Scene.v().getMethod("<org.apache.hadoop.ipc.Server$Handler: void run()>");
+        boundaryMethods.add(ehm);
+        Body b = getBody(ehm);
+
+        for (Unit u : b.getUnits()) {
+            Stmt stmt = (Stmt) u;
+            if (stmt.toString().contains("UndeclaredThrowableException")) {
+                List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
+                b.getUnits().insertAfter(stmts, stmt);
+                break;
+            }
+        }
+        // p(b);
+        ehm.setActiveBody(b);
+        
     }
 
     public static void addPauseStmts(){
@@ -788,6 +815,7 @@ public class LumosAgent {
     public static Body getBody(String s){
         return getBody(Scene.v().getMethod(s));
     }
+
     public static void turnOnRR(){
     }
     public static void lplay() {
@@ -820,20 +848,6 @@ public class LumosAgent {
         List<String> allInsts = CompileUtils.readFrom(instFile);
         SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
         SootMethod sm = sc.getMethodByName("<clinit>");
-        // for(SootMethod sm : sc.getMethods()){
-            // sm.retrieveActiveBody();
-            // for(Unit u : sm.getActiveBody().getUnits()){
-            //     Stmt stmt = (Stmt) u;
-            //     p(stmt+"");
-            //     if(stmt.containsInvokeExpr()){
-            //         InvokeExpr expr = stmt.getInvokeExpr();
-            //         if(expr.toString().contains("$lambda")){
-            //             p(expr+"");
-            //             p(expr.getMethod()+"");
-            //         }
-            //     }
-            // }
-        // }
 
         for (String s : allInsts) {
             // if(!s.contains("$lambda")){
@@ -844,10 +858,19 @@ public class LumosAgent {
                 continue;
             }
             LInst inst = fromSummary(s);
-            // if(inst.sm.getDeclaringClass().getShortName().equals("FSNamesystem")){
-            //     p("READ INST " + inst);
-            // }
             activate(inst);
+        }
+
+        String baseInstFile = System.getProperty("baseInstFile");
+        allInsts = CompileUtils.readFrom(baseInstFile);
+        for(String s : allInsts){
+            if(s.contains("$lambda_")){
+                continue;
+            }
+            String[] items = s.split(LInst.SEPARATOR);
+            SootMethod m = LumosAgent.findMethod(items[1]);
+            SootClass c = m.getDeclaringClass();
+            baseInstClasses.add(c);
         }
     }
 
@@ -932,6 +955,7 @@ public class LumosAgent {
         p("Now compiling...");
         entryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
         boundaryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
+        scToCompile.addAll(baseInstClasses);
         for (SootClass sclass : scToCompile) {
             for(SootMethod sm: sclass.getMethods()){
                 if(!sm.hasActiveBody()){

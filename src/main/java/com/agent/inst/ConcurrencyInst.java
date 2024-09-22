@@ -63,10 +63,16 @@ public class ConcurrencyInst extends LInst{
         String rid = this.id;
         if(lop instanceof ConcreteRef){
             target = lop;
+            if (verbose()) {
+                rid = "[----CREAD----]" + rid;
+            }
             // rid+=":W";
         }
         else if(rop instanceof ConcreteRef){
             target = rop;
+            if (verbose()) {
+                rid = "[----CWRITE----]" + rid;
+            }
             // rid+=":R";
         }
         else{

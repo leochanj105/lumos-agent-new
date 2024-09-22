@@ -46,7 +46,11 @@ public class ValueRecordingInst extends LInst{
                 System.out.println("&&"+actualStmt+"\n"+ this.stmt);
                 System.out.println(sm.getActiveBody());
             }
-            List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger, "[####READ####]" + this.id);
+            String tag = this.id;
+            if (verbose()) {
+                tag = "[####READ####]" + tag;
+            }
+            List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger,tag);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
             if(actualStmt == null){
@@ -65,8 +69,12 @@ public class ValueRecordingInst extends LInst{
                     // List<Stmt> logStmt1 = CompileUtils.generateClassLog(b, actualStmt,
                     //         ((InstanceInvokeExpr) iexpr).getBase(), LumosAgent.logger, "[====CALL====]" + this.id);
                     // CompileUtils.insertAt(units, logStmt1, actualStmt, true);
+                    String tag = this.id;
+                    if (verbose()) {
+                        tag = "[====RETURN====]" + tag;
+                    }
                     List<Stmt> logStmt = CompileUtils.generateClassLog(b, actualStmt,
-                            ((InstanceInvokeExpr) iexpr).getBase(), LumosAgent.logger, "[====RETURN====]" + this.id);
+                            ((InstanceInvokeExpr) iexpr).getBase(), LumosAgent.logger, tag);
                     stmts.addAll(logStmt);
                 }
 
