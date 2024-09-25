@@ -733,12 +733,18 @@ public class LumosAgent {
                 }
             }
         }
-        
+        SootClass fslogc = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.FSEditLog");
+        addAsBoundary(fslogc);
+
+        SootClass sbuilderc = Scene.v().getSootClass("java.lang.StringBuilder");
+        addAsBoundary(sbuilderc);
+        SootMethod checkerm = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem: org.apache.hadoop.hdfs.server.namenode.FSPermissionChecker getPermissionChecker()>");
+        boundaryMethods.add(checkerm);
+        SootMethod forkm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
+        boundaryMethods.add(forkm);
+
         // addAsBoundary("org.apache.hadoop.ipc.Server$ExceptionsHandler");
         // addAsBoundary("edu.brown.cs.systems.baggage.Baggage");
-        SootMethod sm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
-        boundaryMethods.add(sm);
-
         for (SootMethod bm : boundaryMethods) {
             // if(!bm.hasActiveBody() && bm.getSource() == null){
             //     continue;

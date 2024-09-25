@@ -33,8 +33,8 @@ public abstract class LInst{
         return id;
     }
 
-    public boolean verbose(){
-        return verbose == null ? false : verbose.equals("true");
+    public String verbose(){
+        return verbose == null ? "" : verbose;
     }
     
     public LInst(SootMethod sm, String stmt, int lineNum, Value mayRecord, String type) {
@@ -43,8 +43,10 @@ public abstract class LInst{
         this.lineNum = lineNum;
         this.mayRecord = mayRecord;
         this.type = type;
-        if (verbose()) {
+        if (verbose().equals("verbose")) {
             this.id = sm.getDeclaringClass().getShortName() + ":" + sm.getName() + ":" + lineNum;
+        } else if (verbose().equals("analysis")) {
+            this.id = "&" + sm.getDeclaringClass() + ":" + sm.getName() + "&";
         } else {
             this.id = currId.getAndIncrement() + "";
         }

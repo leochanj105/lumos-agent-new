@@ -47,7 +47,7 @@ public class ValueRecordingInst extends LInst{
                 System.out.println(sm.getActiveBody());
             }
             String tag = this.id;
-            if (verbose()) {
+            if (verbose().equals("verbose")) {
                 tag = "[####READ####]" + tag;
             }
             List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger,tag);
@@ -70,7 +70,7 @@ public class ValueRecordingInst extends LInst{
                     //         ((InstanceInvokeExpr) iexpr).getBase(), LumosAgent.logger, "[====CALL====]" + this.id);
                     // CompileUtils.insertAt(units, logStmt1, actualStmt, true);
                     String tag = this.id;
-                    if (verbose()) {
+                    if (verbose().equals("verbose")) {
                         tag = "[====RETURN====]" + tag;
                     }
                     List<Stmt> logStmt = CompileUtils.generateClassLog(b, actualStmt,

@@ -1,7 +1,9 @@
 package com.agent.inst;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
@@ -24,6 +26,9 @@ import soot.jimple.StringConstant;
 
 public class ConcurrencyInst extends LInst{
 
+    public static List<String> toTrackNames = CompileUtils.readFrom("/home/jingyuan/hdfsstuff/totrack");
+    public static void readToTracks(){
+    }
     @Override
     public List<Stmt> instrument(Body b) {
         SootClass sysc = LumosAgent.findClassExact("java.lang.System");
@@ -47,8 +52,16 @@ public class ConcurrencyInst extends LInst{
         followings.add(endStmt);
         String debugc = System.getProperty("debugc");
         String debugm = System.getProperty("debugm");
-        if ((debugc != null && b.getMethod().getDeclaringClass().getShortName().equals(debugc)) 
-                && (debugm != null && b.getMethod().getName().equals(debugm))) {
+        // if ((debugc != null && b.getMethod().getDeclaringClass().getShortName().equals(debugc)) 
+        //         && (debugm != null && b.getMethod().getName().equals(debugm))) {
+        boolean matched = false;
+        for(String name: toTrackNames){
+            if(b.getMethod().getDeclaringClass().getShortName().contains(name)){
+                matched = true;
+                break;
+            }
+        }
+        if(matched){
             followings.addAll(CompileUtils.generateDebugLog(b,  assignStmt, this.id, startLocal, endLocal));
             units.insertAfter(followings, assignStmt);
             return null;
@@ -63,15 +76,15 @@ public class ConcurrencyInst extends LInst{
         String rid = this.id;
         if(lop instanceof ConcreteRef){
             target = lop;
-            if (verbose()) {
-                rid = "[----CREAD----]" + rid;
+            if (verbose().equals("verbose")) {
+                rid = "[----CWRITE----]" + rid;
             }
             // rid+=":W";
         }
         else if(rop instanceof ConcreteRef){
             target = rop;
-            if (verbose()) {
-                rid = "[----CWRITE----]" + rid;
+            if (verbose().equals("verbose")) {
+                rid = "[----CREAD----]" + rid;
             }
             // rid+=":R";
         }
