@@ -878,4 +878,9 @@ public class CompileUtils {
 
     }
 
+    public static Body duplicateBody(SootMethod sm){
+        Body res = (Body) sm.getActiveBody().clone();
+        return res;
+    }
+
 }

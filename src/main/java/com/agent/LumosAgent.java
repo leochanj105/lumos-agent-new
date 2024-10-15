@@ -65,7 +65,7 @@ public class LumosAgent {
 
     // public static String logger = "stdout";
     // public static String rrClass = "com.mycompany.app.App";
-    
+    public static String component = "nn";
     public static Set<SootMethod> entryMethods = new HashSet<>();
     public static Set<SootMethod> boundaryMethods = new HashSet<>();
     public static Set<SootMethod> pausedMethods = new HashSet<>();
@@ -226,6 +226,11 @@ public class LumosAgent {
         //     return;
         // inst.appendToBootstrapClassLoaderSearch(toolsJarFile);
         mode = System.getProperty("mode");
+
+        String componentStr = System.getProperty("component");
+        if(componentStr != null){
+            component = componentStr;
+        }
         // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
 
         // inst.appendToBootstrapClassLoaderSearch(slf4j_log4j12JarFile);
@@ -397,18 +402,23 @@ public class LumosAgent {
     }
 
     public static void setExcludes() {
-        String[] exClasses = { "org.apache.hadoop.ant.*",
-                "org.apache.hadoop.record.*", 
-                "org.apache.hadoop.log.*",
-                //"org.apache.hadoop.metrics2.*",
-                //"org.apache.hadoop.metrics.*",
-                "org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer",
-                "org.apache.hadoop.http.*",
-                "org.apache.hadoop.hdfs.web.*",
-                "org.apache.hadoop.hdfs.server.datanode.*",
-                "org.apache.hadoop.fs.shell.*",
-                // "edu.brown.cs.*"
-        };
+        String[] exClasses = {};
+        if (component.equals("nn")) {
+            exClasses = new String[]{"org.apache.hadoop.ant.*","org.apache.hadoop.record.*","org.apache.hadoop.log.*",
+            // "org.apache.hadoop.metrics2.*",
+            // "org.apache.hadoop.metrics.*",
+            "org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer","org.apache.hadoop.http.*","org.apache.hadoop.hdfs.web.*","org.apache.hadoop.hdfs.server.datanode.*","org.apache.hadoop.fs.shell.*",
+            // "edu.brown.cs.*"
+            };
+        }
+        else if (component.equals("dn")){
+            exClasses = new String[]{"org.apache.hadoop.ant.*","org.apache.hadoop.record.*","org.apache.hadoop.log.*",
+            // "org.apache.hadoop.metrics2.*",
+            // "org.apache.hadoop.metrics.*",
+            "org.apache.hadoop.hdfs.server.namenode.NameNodeHttpServer","org.apache.hadoop.http.*","org.apache.hadoop.hdfs.web.*","org.apache.hadoop.hdfs.server.namenode.*","org.apache.hadoop.fs.shell.*",
+            // "edu.brown.cs.*"
+            };
+        }
         List<String> excludePackagesList = Arrays.asList(exClasses);
         Options.v().set_exclude(excludePackagesList);
         Options.v().set_no_bodies_for_excluded(true);
@@ -641,51 +651,57 @@ public class LumosAgent {
     }
 
     public static void addEntryMethods(){
+        
         // LumosAgent.entryMethods.add(Scene.v().getSootClass("com.mycompany.app.Work").getMethodByName("work"));
-        SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer");
-        for(SootMethod sm : ecls.getMethods()){
-            String mname = sm.getName();
-            String specialName = System.getProperty("specialName");
-            if (mname.equals("<init>") ||
-                    mname.equals("join") ||
-                    mname.equals("start") ||
-                    mname.equals("stop") ||
-                    mname.equals("<clinit>") ||
-                    mname.equals("checkNNStartup") ||
-                    (specialName != null && !mname.equals(specialName))) {
-                continue;
+        if (component.equals("nn")) {
+            SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer");
+            for (SootMethod sm : ecls.getMethods()) {
+                String mname = sm.getName();
+                String specialName = System.getProperty("entry");
+                if (mname.equals("<init>") ||
+                        mname.equals("join") ||
+                        mname.equals("start") ||
+                        mname.equals("stop") ||
+                        mname.equals("<clinit>") ||
+                        mname.equals("checkNNStartup") ||
+                        (specialName != null && !mname.equals(specialName))) {
+                    continue;
+                }
+                entryMethods.add(sm);
             }
-            entryMethods.add(sm);
-        }
 
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor").
-        //         getMethodByName("pendingReplicationCheck"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.blockmanagement.DecommissionManager$Monitor").
-        //         getMethodByName("check"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager").
-        //         getMethodByName("heartbeatCheck"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
-        //         getMethodByName("computeDatanodeWork"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
-        //         getMethodByName("processPendingReplications"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-        //         getMethodByName("checkAvailableResources"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-        //         getMethodByName("nameNodeHasResourcesAvailable"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-        //         getMethodByName("enterSafeMode"));
-        // entryMethods.add(Scene.v().getSootClass(
-        //     "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-        //         getMethodByName("isInSafeMode"));
-        p(entryMethods.size() + "");
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor").
+            // getMethodByName("pendingReplicationCheck"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.blockmanagement.DecommissionManager$Monitor").
+            // getMethodByName("check"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager").
+            // getMethodByName("heartbeatCheck"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
+            // getMethodByName("computeDatanodeWork"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
+            // getMethodByName("processPendingReplications"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+            // getMethodByName("checkAvailableResources"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+            // getMethodByName("nameNodeHasResourcesAvailable"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+            // getMethodByName("enterSafeMode"));
+            // entryMethods.add(Scene.v().getSootClass(
+            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
+            // getMethodByName("isInSafeMode"));
+        }
+        else if(component.equals("dn")){
+            SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.BPOfferService");
+            entryMethods.add(ecls.getMethodByName("processCommandFromActive"));
+        }
         for (SootMethod sm : entryMethods) {
             entryClasses.add(sm.getDeclaringClass().getName());
         }
@@ -700,6 +716,7 @@ public class LumosAgent {
                 b.getUnits().insertBefore(stmts, ret);
             }
             toggleM.setActiveBody(b);
+            p(b);
         }
     }
 
@@ -740,8 +757,8 @@ public class LumosAgent {
         // addAsBoundary(sbuilderc);
         // SootMethod checkerm = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem: org.apache.hadoop.hdfs.server.namenode.FSPermissionChecker getPermissionChecker()>");
         // boundaryMethods.add(checkerm);
-        SootMethod forkm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
-        boundaryMethods.add(forkm);
+        // SootMethod forkm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
+        // boundaryMethods.add(forkm);
 
         // addAsBoundary("org.apache.hadoop.ipc.Server$ExceptionsHandler");
         // addAsBoundary("edu.brown.cs.systems.baggage.Baggage");
@@ -768,7 +785,7 @@ public class LumosAgent {
             // p(b);
         }
 
-        
+        /*
         SootMethod ehm = Scene.v().getMethod("<org.apache.hadoop.ipc.Server$Handler: void run()>");
         boundaryMethods.add(ehm);
         Body b = getBody(ehm);
@@ -781,8 +798,10 @@ public class LumosAgent {
                 break;
             }
         }
+        
         // p(b);
         ehm.setActiveBody(b);
+        */
         
     }
 
