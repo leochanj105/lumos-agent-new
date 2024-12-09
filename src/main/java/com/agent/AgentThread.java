@@ -303,17 +303,6 @@ public class AgentThread implements Runnable, MessageHandler {
         refreshTPs();
     }
 
-    public static void readJars(String path, List<String> jars){
-        File folder = new File(path);
-        File[] listOfFiles = folder.listFiles();
-        if (listOfFiles != null) {
-            for (int i = 0; i < listOfFiles.length; i++) {
-                if (listOfFiles[i].getName().endsWith(".jar")) {
-                    jars.add(listOfFiles[i].getAbsolutePath());
-                } 
-            }
-        }
-    }
     @Override
     public void run() {
         System.out.println("Agent thread started");
@@ -324,6 +313,7 @@ public class AgentThread implements Runnable, MessageHandler {
 
         System.out.println("Agent ready");
         System.out.println(System.getProperty("java.version"));
+
         // register appClassLoader loaded tracer with LumosGlobal
         ClassLoader appLoader = LumosAgent.cloader;
         Class<?> tracerClass;
@@ -345,33 +335,8 @@ public class AgentThread implements Runnable, MessageHandler {
         } catch (InvocationTargetException e) {
             e.printStackTrace();
         }
-        String basePath = "/home/jingyuan/hadoop";
-        String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
-        String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
-        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
-        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
-        String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
-        String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
-        String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
-        List<String> cpaths = new ArrayList<String>();
-        List<String> jpaths = new ArrayList<String>();
-        List<String> apaths = new ArrayList<String>();
-        readJars(commonJarPath, jpaths);
-        readJars(hdfsJarPath, jpaths);
-        readJars(httpfsJarPath, jpaths);
-        // readJars(btracePath, jpaths);
-        cpaths.add(commonPath);
-        cpaths.add(hdfsPath);
-        cpaths.add(btracePath);
-        // cpaths.add(testPath);
-        apaths.addAll(cpaths);
-        apaths.add(LumosAgent.tracerJar);
-        cpaths.addAll(jpaths);
-        // String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
-        // cpaths.add(btracePath);
-        cpaths.add(LumosAgent.jrePath);
-        LumosAgent.setupSoot(cpaths, apaths);
-        LumosAgent.setupClass("hdfs");
+
+        LumosAgent.setupEnv();
         LumosAgent.lplay();
         refreshInsts();
 

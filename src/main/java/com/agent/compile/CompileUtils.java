@@ -141,7 +141,9 @@ public class CompileUtils {
     public static void insertAt(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target, boolean before) {
         if (before) {
             List<Unit> insUnits = new ArrayList<>(toinsert);
-            units.insertBeforeNoRedirect(insUnits, target);
+            insUnits.forEach(unit -> {
+                units.insertBeforeNoRedirect(unit, target);
+            });
         } else {
             units.insertAfter(toinsert, target);
         }

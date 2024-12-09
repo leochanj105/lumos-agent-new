@@ -1,15 +1,18 @@
 package com.agent;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +77,8 @@ public class LumosAgent {
     public static String tracerJar = "/tmp/LumosTracer.jar";
     public static String bootstrapJar = "/tmp/LumosTracer-bootstrap.jar";
     public static String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
+
+    public static Map<String, Map<String, String>> translationMap;
     
     public static byte[] forTest;
     public static String testclass;
@@ -337,18 +342,14 @@ public class LumosAgent {
         return false;
     }
 
-    public static void setupSoot(Collection<String> cpath, List<String> pdir) {
-    // public static void setupSoot(String path) {
+    public static void setSootOptions(){
         G.reset();
-
         Options.v().set_prepend_classpath(true);
         Options.v().set_allow_phantom_refs(true);
         Options.v().set_keep_line_number(true);
         Options.v().set_whole_program(true);
         Options.v().set_validate(true);
-
         Options.v().set_allow_phantom_elms(true);
-
         // This is needed to prevent compile error for unimplemented
         // methods in interfaces !!
         Options.v().set_ignore_resolution_errors(true);
@@ -356,7 +357,28 @@ public class LumosAgent {
         // Need this to makesure paramter names are kept!!
         // Spring annotations rely on this!!
         Options.v().set_write_local_annotations(true);
+        Options.v().set_java_version(8);
+        // Use original names
+        
+        Options.v().setPhaseOption("jb", "optimize:false");
+        Options.v().setPhaseOption("jb", "use-original-names:true");
+        Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
+        Options.v().setPhaseOption("jb", "stabilize-local-names:true");
+        
+        // %Issue: lambda unresolved
+        Options.v().setPhaseOption("jb", "model-lambdametafactory:false");
+        // Need this to avoid the need to provide an entry point
+        Options.v().setPhaseOption("cg", "all-reachable:true");
 
+    
+    }
+    public static void loadClasses(){
+        Scene.v().loadBasicClasses();
+        Scene.v().loadNecessaryClasses();
+    }
+
+    public static void setupSoot(Collection<String> cpath, List<String> pdir) {
+        setSootOptions();
         String classpath = "";
         for (String cp : cpath) {
             classpath += cp + File.pathSeparator;
@@ -365,40 +387,11 @@ public class LumosAgent {
             classpath = classpath.substring(0, classpath.length() - 1);
         }
         Options.v().set_soot_classpath(classpath);
-        Options.v().set_java_version(8);
-        // processList = new ArrayList<String>();
-
         Options.v().set_process_dir(pdir);
-
-        // Options.v().set_no_bodies_for_excluded(true);
-        // Options.v().set_print_tags_in_output(true);
-
-        // Use original names
-        Options.v().setPhaseOption("jb", "optimize:false");
-        Options.v().setPhaseOption("jb", "use-original-names:true");
-        Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
-        Options.v().setPhaseOption("jb", "stabilize-local-names:true");
-        // %Issue: lambda unresolved
-        Options.v().setPhaseOption("jb", "model-lambdametafactory:false");
-        // Need this to avoid the need to provide an entry point
-        // Options.v().setPhaseOption("cg", "all-reachable:true");
-
-        // Need this to include all subtypes
-        // Options.v().setPhaseOption("cg", "library:any-subtype");
         setExcludes();
-        setIncludes();
-        if (allOn) {
-            p("loading otlp classes...");
-            Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
-                    SootClass.SIGNATURES);
-            Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.SpanContext",
-                    SootClass.SIGNATURES);
-        }
-        Scene.v().loadBasicClasses();
-        // Scene.v().addBasicClass("io.opentelemetry.api.trace.Span",
-        // SootClass.SIGNATURES);
-        Scene.v().loadNecessaryClasses();
-        setEntryPoint();
+//        setIncludes();
+        loadClasses();
+//        setEntryPoint();
     }
 
     public static void setExcludes() {
@@ -509,12 +502,6 @@ public class LumosAgent {
     public static void setupClass(String service) {
         p("setting up class...");
 /*
-        Options.v().setPhaseOption("cg", "safe-forname:true");
-        // Options.v().setPhaseOption("cg", "safe-newinstance:true");
-        Options.v().setPhaseOption("cg", "resolve-all-abstract-invokes:true");
-        Options.v().setPhaseOption("cg", "types-for-invoke:true");
-        Options.v().setPhaseOption("cg", "verbose:false");
-        Options.v().set_whole_program(true);
         List<String> dynamicClasses = new ArrayList<>();
         dynamicClasses.add("org.apache.hadoop.ipc.ProtobufRpcEngine");
         Options.v().set_dynamic_class(dynamicClasses);
@@ -526,8 +513,6 @@ public class LumosAgent {
         // PhaseOptions.v().setPhaseOption(sparkConfig, "vta:true");
         // PhaseOptions.v().setPhaseOption(sparkConfig, "on-fly-cg:false");
         // PhaseOptions.v().setPhaseOption(sparkConfig, "types-for-sites:true");
-       // PhaseOptions.v().setPhaseOption(sparkConfig, "field-based:true");
-//       PhaseOptions.v().setPhaseOption(sparkConfig,"cs-demand:true");
         // PhaseOptions.v().setPhaseOption(sparkConfig, "verbose:true");
         PhaseOptions.v().setPhaseOption(sparkConfig, "apponly:false");
         long start,end;
@@ -538,11 +523,10 @@ public class LumosAgent {
         SparkTransformer.v().transform(sparkConfig.getPhaseName(), phaseOptions);
         end = System.nanoTime();
         p("spark-2 time: " + (end-start)/1e9+" seconds");
-        // CHATransformer.v().transform();
-        // p("CHA done");
         */
         // Scene.v().getReachableMethods().listener().forEachRemaining(mc -> {
         // Scene.v().getReachableMethods().listener().forEachRemaining( ->{
+
         List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
         for(String s:retrieveHistory){
             // %Issue: lambda is currently unresolved
@@ -555,7 +539,9 @@ public class LumosAgent {
             if(s.contains("edu.brown.cs")){
                 continue;
             }
+
             SootMethod sm = Scene.v().getMethod(s);
+            // if(sm.getDeclaringClass().resolvingLevel() !=)
             // for (SootMethod sm : cls.getMethods()) {
                 if (sm.isAbstract() || sm.isNative()) {
                     continue;
@@ -577,10 +563,7 @@ public class LumosAgent {
         analyzeReady = true;
     }
 
-    public static void analyzePath(String path) {
-        // Options.v().set
-        p("Analyzing " + path);
-        // setupSoot(path);
+    public static void analyzePath() {
         for (SootClass cls : Scene.v().getApplicationClasses()) {
             // p(""+cls);
             if (cls.toString().contains("conf.HttpAspect")) {
@@ -588,7 +571,7 @@ public class LumosAgent {
             }
             for (SootMethod sm : cls.getMethods()) {
                 // p(""+sm);
-                if (sm.isAbstract()) {
+                if (sm.isAbstract() || sm.isNative()) {
                     continue;
                 }
                 sm.retrieveActiveBody();
@@ -607,7 +590,7 @@ public class LumosAgent {
     }
 
     public static void loadBodies(SootClass sc){
-        for(SootMethod sm:sc.getMethods()){
+        for (SootMethod sm : sc.getMethods()) {
             loadBody(sm);
         }
     }
@@ -841,16 +824,30 @@ public class LumosAgent {
         return getBody(Scene.v().getMethod(s));
     }
 
-    public static void turnOnRR(){
-    }
     public static void lplay() {
         addEntryMethods();
         addBoundaries();
-        // turnOnRR();
         p("----Analysis Done------");
         analyzeReady = true;
         readInsts();
-        // analyzePath(cpath);
+    }
+
+    public static LInst fromDoopSummary(String summary){
+        String[] items = summary.split("\t");
+        String methodAndInst = items[0];
+        String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+        String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+        String value = items[1];
+        if(instId.contains("fresh-null-assign")){
+            return null;
+        }
+        String inst = translationMap.get(method).get(instId);
+        // p("!! " + instId);
+        // p(method);
+        // if(inst == null){
+        //     p("$$ " + inst);
+        // }
+        return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
     }
 
     public static LInst fromSummary(String summary){
@@ -904,11 +901,6 @@ public class LumosAgent {
             return;
         }
         allInsts.add(inst);
-
-        // if (inst.sm.getDeclaringClass().getShortName().equals("FSNamesystem")) {
-        //     p("ADD INST " + inst);
-        //     p(inst.sm.toString());
-        // }
         activeInsts.computeIfAbsent(inst.sm.toString(),
                 e -> new HashSet<>()).add(inst);
     }
@@ -1107,8 +1099,101 @@ public class LumosAgent {
         return cmap;
     }
 
+    public static void readJars(String path, List<String> jars){
+        File folder = new File(path);
+        File[] listOfFiles = folder.listFiles();
+        if (listOfFiles != null) {
+            for (int i = 0; i < listOfFiles.length; i++) {
+                if (listOfFiles[i].getName().endsWith(".jar")) {
+                    jars.add(listOfFiles[i].getAbsolutePath());
+                } 
+            }
+        }
+    }
+    public static void setupEnv(){
+        String basePath = "/home/jingyuan/hadoop";
+        String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
+        String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
+        // String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
+        // String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
+        // String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
+        // String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
+        //String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
+        List<String> cpaths = new ArrayList<String>();
+        List<String> jpaths = new ArrayList<String>();
+        List<String> apaths = new ArrayList<String>();
+        // readJars(commonJarPath, jpaths);
+        // readJars(hdfsJarPath, jpaths);
+        // readJars(httpfsJarPath, jpaths);
+        cpaths.add(commonPath);
+        cpaths.add(hdfsPath);
+        // cpaths.add(btracePath);
+        // cpaths.add(testPath);
+        apaths.addAll(cpaths);
+        apaths.add(LumosAgent.tracerJar);
+        cpaths.addAll(jpaths);
+        // cpaths.add(btracePath);
+        cpaths.add(LumosAgent.jrePath);
+        LumosAgent.setupSoot(cpaths, apaths);
+/*
+        SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.DataNode");
+        p(ecls.getMethods());
+        SootMethod sm = ecls.getMethodByName("getStorage");
+        sm.retrieveActiveBody();
+        p(sm.getActiveBody());
+*/
+        //LumosAgent.setupClass("hdfs");
+        analyzePath();
+        readTranslation();
+        readInstsDoop();
+    }
+
+    public static void readTranslation(){
+        try {
+            FileInputStream fis = new FileInputStream("/home/jingyuan/doopstuff/doop/lfacts/translationMap");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            translationMap = (ConcurrentHashMap<String, Map<String, String>>) ois.readObject();
+            //System.out.println(translationMap.entrySet().iterator().next());
+            // translationMap.forEach((k,v)->{
+            //     if(!k.contains("DatanodeID: void setIpAndXferPort")){
+            //         return;
+            //     }
+            //     p("====");
+            //     p(k);
+            //     v.forEach((k2,v2)->{
+            //         p(k2 + ":  " + v2);
+            //     });
+            // });
+            ois.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void readInstsDoop() {
+        p("reading inst files...");
+        String instFile = System.getProperty("instFile");
+        List<String> allInsts = CompileUtils.readFrom(instFile);
+
+        for (String s : allInsts) {
+            // %Issue: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+            LInst inst = fromDoopSummary(s);
+            if(inst == null){
+                continue;
+            }
+            // p(inst.sm + ":  " + inst.stmt);
+            //System.out.println(inst.getActualStmt(inst.sm.getActiveBody()));
+            activate(inst);
+        }
+
+    }
+
     public static void main(String args[]) {
-        lplay();
+        setupEnv();
+        instrument();
     }
 
 }

@@ -21,7 +21,9 @@ import soot.jimple.AssignStmt;
 import soot.jimple.IdentityStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
+import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
+import soot.jimple.internal.JNewExpr;
 
 public class ValueRecordingInst extends LInst{
     // public String type;
@@ -36,20 +38,35 @@ public class ValueRecordingInst extends LInst{
         if (type.equals("vread")) {
             // System.out.println(this.id);
             Value v = null;
+
+            boolean isAssignNew = false;
             if (actualStmt instanceof AssignStmt) {
                 v = ((AssignStmt) actualStmt).getLeftOp();
+                isAssignNew = ((AssignStmt)actualStmt).getRightOp() instanceof JNewExpr;
             }
             else if(actualStmt instanceof IdentityStmt){
                 v = ((IdentityStmt) actualStmt).getLeftOp();
             }
-            if(v==null){
-                System.out.println("&&"+actualStmt+"\n"+ this.stmt);
+            if (v == null) {
+                System.out.println("&&" + actualStmt + "\n" + this.stmt);
                 System.out.println(sm.getActiveBody());
             }
             String tag = this.id;
             if (verbose().equals("verbose")) {
                 tag = "[####READ####]" + tag;
             }
+            if(isAssignNew){
+                for(Unit u:units){
+                    Stmt stmt = (Stmt) u;
+                    if(stmt.containsInvokeExpr() && stmt.getInvokeExpr() instanceof SpecialInvokeExpr){
+                        SpecialInvokeExpr iexpr = (SpecialInvokeExpr) stmt.getInvokeExpr();
+                        if(iexpr.getBase().equals(v) && iexpr.getMethod().getName().equals("<init>")){
+                            actualStmt = stmt;
+                        }
+                    }
+                }
+            }
+            
             List<Stmt> logStmt = CompileUtils.generateValueLog(b, actualStmt, v, LumosAgent.logger,tag);
             stmts.addAll(logStmt);
         } else if (type.equals("invoke")) {
