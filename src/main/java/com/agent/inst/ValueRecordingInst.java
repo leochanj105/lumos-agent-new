@@ -39,13 +39,16 @@ public class ValueRecordingInst extends LInst{
             // System.out.println(this.id);
             Value v = null;
 
-            boolean isAssignNew = false;
+            boolean needReplace = false;
             if (actualStmt instanceof AssignStmt) {
                 v = ((AssignStmt) actualStmt).getLeftOp();
-                isAssignNew = ((AssignStmt)actualStmt).getRightOp() instanceof JNewExpr;
+                needReplace = ((AssignStmt)actualStmt).getRightOp() instanceof JNewExpr;
             }
             else if(actualStmt instanceof IdentityStmt){
                 v = ((IdentityStmt) actualStmt).getLeftOp();
+            }
+            if(!sm.isStatic() && v.equals(b.getThisLocal()) && sm.getName().equals("<init>")){
+                needReplace = true;
             }
             if (v == null) {
                 System.out.println("&&" + actualStmt + "\n" + this.stmt);
@@ -55,7 +58,7 @@ public class ValueRecordingInst extends LInst{
             if (verbose().equals("verbose")) {
                 tag = "[####READ####]" + tag;
             }
-            if(isAssignNew){
+            if(needReplace){
                 for(Unit u:units){
                     Stmt stmt = (Stmt) u;
                     if(stmt.containsInvokeExpr() && stmt.getInvokeExpr() instanceof SpecialInvokeExpr){

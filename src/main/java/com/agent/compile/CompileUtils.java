@@ -63,6 +63,7 @@ import soot.jimple.StringConstant;
 import soot.jimple.internal.JInstanceFieldRef;
 import soot.jimple.internal.JReturnStmt;
 import soot.jimple.internal.JReturnVoidStmt;
+import soot.options.Options;
 import soot.toolkits.graph.BriefUnitGraph;
 
 public class CompileUtils {
@@ -195,6 +196,26 @@ public class CompileUtils {
         insts.add(assign(bLocal, invoke(getm)));
         return insts;
     }
+    public static List<Stmt> generateStartRecording(Body body, String recName){
+        List<Stmt> insts = new ArrayList<>();
+        // Local bLocal = getLocal(body, "bLocal", IntType.v());
+        // Value v = IntConstant.v(1);
+        //Local strLocal = getLocal(body, "strLocal", RefType.v("java.lang.String"));
+        StringConstant recNameStr = StringConstant.v(recName);
+
+        // insts.add(assign(bLocal, v));
+        //insts.add(assign(strLocal, str));
+        SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void startRecording(java.lang.String)");
+        insts.add(call(invoke(togglem, recNameStr)));
+        return insts;
+    }
+
+    public static List<Stmt> generateEndRecording(Body body){
+        List<Stmt> insts = new ArrayList<>();
+        SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void endRecording()");
+        insts.add(call(invoke(togglem)));
+        return insts;
+    }
 
     public static List<Stmt> generateRRtoggle(Body body, String field, boolean isOn){
         List<Stmt> insts = new ArrayList<>();
@@ -203,6 +224,19 @@ public class CompileUtils {
         insts.add(assign(bLocal, v));
         SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void toggle(boolean)");
         insts.add(call(invoke(togglem, bLocal)));
+        return insts;
+    }
+    public static List<Stmt> generateResetCounter(Body body, String field){
+        List<Stmt> insts = new ArrayList<>();
+        SootMethod rcm = getMethod("com.lumos.tracer.LumosTracer", "void resetCounter()");
+        insts.add(call(invoke(rcm)));
+        return insts;
+    }
+    
+    public static List<Stmt> generateCall(Body body, String field, String md){
+        List<Stmt> insts = new ArrayList<>();
+        SootMethod rcm = getMethod("com.lumos.tracer.LumosTracer", md);
+        insts.add(call(invoke(rcm)));
         return insts;
     }
     public static List<Stmt> generateInitOld(Body body, String member) {
@@ -397,6 +431,25 @@ public class CompileUtils {
         return generateValueLog(body, stmt, v, logger, tag, null, null, null);
     }
 
+    public static List<Stmt> generatePrimitiveLog(Body body, Stmt stmt, Value v, String tag) {
+        Type t = v.getType();
+        SootMethod logMethod = null;
+        // Value toRec = null;
+        if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
+            String lmStr = "";
+            lmStr = "void logTrace";
+            logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+        } else {
+            logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
+        }
+        StringConstant tagVal = StringConstant.v(tag);
+        Stmt invokeStmt = call(invoke(logMethod, v, tagVal));
+
+        List<Stmt> stlist = new ArrayList<>();
+        stlist.add(invokeStmt);
+        return stlist;
+    }
+
     public static List<Stmt> generateValueLog(Body body, Stmt stmt, Value v, String logger, String tag, 
             Value start, Value end, Value index){
         SootMethod logMethod = null;
@@ -447,6 +500,14 @@ public class CompileUtils {
         return stlist;
     }
 
+    public static List<Stmt> generateUpdateStat(Body body, Stmt stmt, String recName,String inst){
+        List<Stmt> stlist = new ArrayList<>();
+        SootMethod logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("updateStat");
+        StringConstant instStr = StringConstant.v(inst);
+        StringConstant tagVal = StringConstant.v(recName);
+        stlist.add(call(invoke(logMethod, tagVal, instStr)));
+        return stlist;
+    }
     
     public static Stmt call(InvokeExpr expr){
         return Jimple.v().newInvokeStmt(expr);
@@ -748,9 +809,9 @@ public class CompileUtils {
             boolean stmtMatched = stmt.toString().equals(stmtStr);
             
             boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
-            boolean fuzzyMatch = (stmtStr.contains("#") || stmt.toString().contains("#")) &&
-                    (FuzzySearch.ratio(stmt.toString(), stmtStr) > 80 && !(stmt.toString().contains("goto")));
-
+            // boolean fuzzyMatch = (stmtStr.contains("#") || stmt.toString().contains("#")) &&
+            //         (FuzzySearch.ratio(stmt.toString(), stmtStr) > 99 && !(stmt.toString().contains("goto")));
+            boolean fuzzyMatch = false;
             if (lineMatch) {
                 if (stmtMatched || fuzzyMatch) {
                     return stmt;
@@ -842,7 +903,7 @@ public class CompileUtils {
         // System.out.println("compiling " + cl);
         ByteArrayOutputStream bstream = new ByteArrayOutputStream(4096);
         try {
-            BafASMBackend backend = new BafASMBackend(cl, 52);
+            BafASMBackend backend = new BafASMBackend(cl, Options.java_version_1_8);
             backend.generateClassFile(bstream);
         } catch (Exception e) {
             // System.out.println(cl);

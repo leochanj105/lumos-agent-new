@@ -50,14 +50,15 @@ public class ConcurrencyInst extends LInst{
         }
         units.insertBefore(startStmt, assignStmt);
         followings.add(endStmt);
-        String debugc = System.getProperty("debugc");
-        String debugm = System.getProperty("debugm");
+        //String debugc = System.getProperty("debugc");
+        //String debugm = System.getProperty("debugm");
         // if ((debugc != null && b.getMethod().getDeclaringClass().getShortName().equals(debugc)) 
         //         && (debugm != null && b.getMethod().getName().equals(debugm))) {
+        /*
         boolean matched = false;
+        
         for(String name: toTrackNames){
             if(b.getMethod().getDeclaringClass().getShortName().contains(name)){
-                // matched = true;
                 break;
             }
         }
@@ -66,10 +67,10 @@ public class ConcurrencyInst extends LInst{
             units.insertAfter(followings, assignStmt);
             return null;
         }
+        */
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, startLocal, LumosAgent.logger, "s"));
         // followings.addAll(CompileUtils.generateValueLog(b, endStmt, endLocal, LumosAgent.logger, "e"));
 
-        // /*
         Value rop = assignStmt.getRightOp();
         Value lop = assignStmt.getLeftOp();
         Value target = rop;

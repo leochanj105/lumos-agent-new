@@ -23,7 +23,9 @@ import java.util.jar.JarFile;
 
 import com.agent.compile.CompileUtils;
 import com.agent.inst.ConcurrencyInst;
+import com.agent.inst.ExperimentInst;
 import com.agent.inst.LInst;
+import com.agent.inst.P1TracingInst;
 import com.agent.inst.ValueRecordingInst;
 
 import soot.Body;
@@ -389,9 +391,8 @@ public class LumosAgent {
         Options.v().set_soot_classpath(classpath);
         Options.v().set_process_dir(pdir);
         setExcludes();
-//        setIncludes();
+        setIncludes();
         loadClasses();
-//        setEntryPoint();
     }
 
     public static void setExcludes() {
@@ -421,6 +422,7 @@ public class LumosAgent {
     public static void setIncludes() {
         includeList = new ArrayList<String>();
         includeList.add("java.lang.*");
+/*
         includeList.add("java.util.*");
 
         includeList.add("java.lang.invoke.*");
@@ -473,13 +475,11 @@ public class LumosAgent {
     
         includeList.add("java.beans.*");
         includeList.add("com.sun.beans.*");
+        */
         Options.v().set_include(includeList);
         Scene.v().addBasicClass("java.io.PrintStream", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.System", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.String", SootClass.SIGNATURES);
-        // Scene.v().addBasicClass("java.lang.Map", SootClass.SIGNATURES);
-        // Scene.v().addBasicClass("java.lang.HashMap", SootClass.SIGNATURES);
-        // Scene.v().addBasicClass("java.util.ArrayList", SootClass.SIGNATURES);
         Scene.v().addBasicClass("java.lang.Object", SootClass.SIGNATURES);
         // Scene.v().addBasicClass("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
     }
@@ -501,32 +501,6 @@ public class LumosAgent {
 
     public static void setupClass(String service) {
         p("setting up class...");
-/*
-        List<String> dynamicClasses = new ArrayList<>();
-        dynamicClasses.add("org.apache.hadoop.ipc.ProtobufRpcEngine");
-        Options.v().set_dynamic_class(dynamicClasses);
-        Scene.v().loadNecessaryClasses();
-
-        Transform sparkConfig = new Transform("cg.spark", null);
-        Options.v().setPhaseOption("cg", "verbose:false");
-        PhaseOptions.v().setPhaseOption(sparkConfig, "enabled:true");
-        // PhaseOptions.v().setPhaseOption(sparkConfig, "vta:true");
-        // PhaseOptions.v().setPhaseOption(sparkConfig, "on-fly-cg:false");
-        // PhaseOptions.v().setPhaseOption(sparkConfig, "types-for-sites:true");
-        // PhaseOptions.v().setPhaseOption(sparkConfig, "verbose:true");
-        PhaseOptions.v().setPhaseOption(sparkConfig, "apponly:false");
-        long start,end;
-        // 123
-        Map<String, String> phaseOptions = PhaseOptions.v().getPhaseOptions(sparkConfig);
-        p("starting spark pta...");
-        start = System.nanoTime();
-        SparkTransformer.v().transform(sparkConfig.getPhaseName(), phaseOptions);
-        end = System.nanoTime();
-        p("spark-2 time: " + (end-start)/1e9+" seconds");
-        */
-        // Scene.v().getReachableMethods().listener().forEachRemaining(mc -> {
-        // Scene.v().getReachableMethods().listener().forEachRemaining( ->{
-
         List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
         for(String s:retrieveHistory){
             // %Issue: lambda is currently unresolved
@@ -541,7 +515,6 @@ public class LumosAgent {
             }
 
             SootMethod sm = Scene.v().getMethod(s);
-            // if(sm.getDeclaringClass().resolvingLevel() !=)
             // for (SootMethod sm : cls.getMethods()) {
                 if (sm.isAbstract() || sm.isNative()) {
                     continue;
@@ -634,52 +607,69 @@ public class LumosAgent {
     }
 
     public static void addEntryMethods(){
-        
+        String specialName = System.getProperty("entry");
         // LumosAgent.entryMethods.add(Scene.v().getSootClass("com.mycompany.app.Work").getMethodByName("work"));
         if (component.equals("nn")) {
             SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer");
             for (SootMethod sm : ecls.getMethods()) {
                 String mname = sm.getName();
-                String specialName = System.getProperty("entry");
                 if (mname.equals("<init>") ||
                         mname.equals("join") ||
                         mname.equals("start") ||
                         mname.equals("stop") ||
                         mname.equals("<clinit>") ||
                         mname.equals("checkNNStartup") ||
-                        (specialName != null && !mname.equals(specialName))) {
+                        mname.equals("verifyRequest") ||
+                        (specialName != null && !specialName.equals("any") && !mname.equals(specialName))) {
                     continue;
                 }
                 entryMethods.add(sm);
             }
+            if (specialName.equals("any")) {
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.BlockManager$ReplicationMonitor: void run()>"));
 
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor").
-            // getMethodByName("pendingReplicationCheck"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.blockmanagement.DecommissionManager$Monitor").
-            // getMethodByName("check"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager").
-            // getMethodByName("heartbeatCheck"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
-            // getMethodByName("computeDatanodeWork"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager").
-            // getMethodByName("processPendingReplications"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-            // getMethodByName("checkAvailableResources"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-            // getMethodByName("nameNodeHasResourcesAvailable"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-            // getMethodByName("enterSafeMode"));
-            // entryMethods.add(Scene.v().getSootClass(
-            // "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").
-            // getMethodByName("isInSafeMode"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
+                        .getMethodByName("computeDatanodeWork"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
+                        .getMethodByName("processPendingReplications"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
+                        .getMethodByName("rescanPostponedMisreplicatedBlocks"));
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$LazyPersistFileScrubber: void run()>"));
+
+                entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$LazyPersistFileScrubber: void clearCorruptLazyPersistFiles()>"));
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$NameNodeResourceMonitor: void run()>"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.namenode.FSNamesystem")
+                        .getMethodByName("checkAvailableResources"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.namenode.FSNamesystem")
+                        .getMethodByName("nameNodeHasResourcesAvailable"));
+                // entryMethods.add(Scene.v().getSootClass(
+                //         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").getMethodByName("enterSafeMode"));
+                // entryMethods.add(Scene.v().getSootClass(
+                //         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").getMethodByName("isInSafeMode"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor")
+                        .getMethodByName("pendingReplicationCheck"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.DecommissionManager$Monitor")
+                        .getMethodByName("check"));
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager")
+                        .getMethodByName("heartbeatCheck"));
+
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor: void run()>"));
+                entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor: void rescan()>"));
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.LeaseManager$Monitor: void run()>"));
+                
+                entryMethods.add(Scene.v().getSootClass(
+                        "org.apache.hadoop.hdfs.server.namenode.LeaseManager")
+                        .getMethodByName("checkLeases"));
+                // logSync
+            }
         }
         else if(component.equals("dn")){
             SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.BPOfferService");
@@ -692,10 +682,14 @@ public class LumosAgent {
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
-            List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
+            List<Stmt> stmts = CompileUtils.generateStartRecording(b, toggleM.toString());
+           // List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
+            //stmts.addAll(CompileUtils.generateCall(b, getRRField(), "void resetCounter()"));
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
+                stmts = CompileUtils.generateEndRecording(b);
+                // stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
+                //stmts.addAll(CompileUtils.generateCall(b, getRRField(), "void logCounter()"));
                 b.getUnits().insertBefore(stmts, ret);
             }
             toggleM.setActiveBody(b);
@@ -717,14 +711,6 @@ public class LumosAgent {
 
     public static void addBoundaries() {
         addAsBoundary("java.lang.ClassLoader");
-        // for(SootMethod sm : clder.getMethods()){
-        //     String sname = sm.getName();
-        //     if(sname.equals("loadClass") ||
-        //             sname.equals("getClassLoadingLock")){
-        //         boundaryMethods.add(sm);
-        //     }
-        // }
-        
         for(SootClass sc: Scene.v().getClasses()){
             String pkg = sc.getPackageName();
             if(pkg.startsWith("edu.brown.cs") || pkg.contains("metrics")){
@@ -735,20 +721,15 @@ public class LumosAgent {
         }
         // SootClass fslogc = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.FSEditLog");
         // addAsBoundary(fslogc);
-
         // SootClass sbuilderc = Scene.v().getSootClass("java.lang.StringBuilder");
         // addAsBoundary(sbuilderc);
         // SootMethod checkerm = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem: org.apache.hadoop.hdfs.server.namenode.FSPermissionChecker getPermissionChecker()>");
         // boundaryMethods.add(checkerm);
         // SootMethod forkm = Scene.v().getMethod("<edu.brown.cs.systems.baggage.Baggage: edu.brown.cs.systems.baggage.DetachedBaggage fork()>");
         // boundaryMethods.add(forkm);
-
         // addAsBoundary("org.apache.hadoop.ipc.Server$ExceptionsHandler");
         // addAsBoundary("edu.brown.cs.systems.baggage.Baggage");
         for (SootMethod bm : boundaryMethods) {
-            // if(!bm.hasActiveBody() && bm.getSource() == null){
-            //     continue;
-            // }
             Body b;
             try {
                 b = getBody(bm);
@@ -765,52 +746,9 @@ public class LumosAgent {
                 b.getUnits().insertBefore(stmts, ret);
             }
             bm.setActiveBody(b);
-            // p(b);
-        }
-
-        /*
-        SootMethod ehm = Scene.v().getMethod("<org.apache.hadoop.ipc.Server$Handler: void run()>");
-        boundaryMethods.add(ehm);
-        Body b = getBody(ehm);
-
-        for (Unit u : b.getUnits()) {
-            Stmt stmt = (Stmt) u;
-            if (stmt.toString().contains("UndeclaredThrowableException")) {
-                List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
-                b.getUnits().insertAfter(stmts, stmt);
-                break;
-            }
-        }
-        
-        // p(b);
-        ehm.setActiveBody(b);
-        */
-        
-    }
-
-    public static void addPauseStmts(){
-        SootClass clder = Scene.v().getSootClass("org.apache.hadoop.util.Shell");
-        for(SootMethod sm : clder.getMethods()){
-            String sname = sm.getName();
-            if(sname.equals("runCommand")){
-                pausedMethods.add(sm);
-            }
-        }
-        for (SootMethod bm : pausedMethods) {
-            p("adding to " + bm.getName());
-            Body b = getBody(bm);
-            
-            List<Stmt> stmts = CompileUtils.generateRRsave(b, getRRField());
-            stmts.addAll(CompileUtils.generateRRtoggle(b, getRRField(), false));
-            CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
-            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                stmts = CompileUtils.generateRRrestore(b, getRRField());
-                b.getUnits().insertBefore(stmts, ret);
-            }
-            bm.setActiveBody(b);
-            p(b);
         }
     }
+
     // %Issue: currently we only support instrumenting once;
     // the getBody should ideally cache original body for future instrumentation
     public static Body getBody(SootMethod sm){
@@ -826,10 +764,11 @@ public class LumosAgent {
 
     public static void lplay() {
         addEntryMethods();
-        addBoundaries();
+        //addBoundaries();
         p("----Analysis Done------");
         analyzeReady = true;
-        readInsts();
+        //readInsts();
+        readInstsDoop();
     }
 
     public static LInst fromDoopSummary(String summary){
@@ -837,8 +776,15 @@ public class LumosAgent {
         String methodAndInst = items[0];
         String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
         String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-        String value = items[1];
-        if(instId.contains("fresh-null-assign")){
+        String baseValue = items[1];
+        String witness = items[3];
+        baseValue = baseValue.substring(baseValue.indexOf("/") + 1);
+        witness = witness.substring(witness.indexOf("/") + 1);
+        String tp = items[4];
+        if(instId.contains("fresh-null-assign") || !method.contains("hadoop")){
+            return null;
+        }
+        if(!LumosAgent.findMethod(method).hasActiveBody()){
             return null;
         }
         String inst = translationMap.get(method).get(instId);
@@ -846,8 +792,10 @@ public class LumosAgent {
         // p(method);
         // if(inst == null){
         //     p("$$ " + inst);
-        // }
-        return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
+        // 
+        return new P1TracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp);
+            //ExperimentInst(LumosAgent.findMethod(method), inst, -1, null, recType);
+        //return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
     }
 
     public static LInst fromSummary(String summary){
@@ -909,9 +857,7 @@ public class LumosAgent {
         Map<String, byte[]> cmap = new ConcurrentHashMap<>();
         Set<SootClass> scToCompile = new HashSet<>();
         for (String smstr : activeInsts.keySet()) {
-            // p("handling " + smstr + "...");
             SootMethod sm = Scene.v().getMethod(smstr);
-            // SootClass sclass = findClass(sm.getDeclaringClass().getName());
             SootClass sclass = sm.getDeclaringClass();
             // if(sclass.getPackageName().contains("java.")){
             //     continue;
@@ -919,7 +865,6 @@ public class LumosAgent {
             if (checkSkipped(sclass)) {
                 continue;
             }
-            // p("found inst in " + sclass);
             // %Issue: this method is too large
             if(sm.getSignature().contains("org.apache.hadoop.util.PureJavaCrc32: void <clinit>()")){ continue;}
             // if(!sclass.getName().contains(")){ continue;}
@@ -943,16 +888,20 @@ public class LumosAgent {
                             targetInsts.add(inst);
                         }
                         for (int i = 0; i < targetstmts.size(); i++) {
-                            // if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
-                            //     break;
-                            // }
                             LInst inst = targetInsts.get(i);
-                            if(!mode.equals("off")){
+                            if (!mode.equals("off")) {
                                 inst.instrument(b);
                             }
-                            b.validate();
                         }
-                        // if (smstr.contains("AtomicBoolean: boolean get")) {
+
+                        try {
+                            b.validate();
+                        } catch (Exception e) {
+                            //p(b)
+                            p("!! " + smstr+":");
+                            e.printStackTrace();
+                        }
+                        // if (smstr.contains("BlockManager$1")) {
                         //     p("## " + smstr);
                         //     p(b + "");
                         // }
@@ -964,7 +913,6 @@ public class LumosAgent {
                     }
                 }
             });
-            // p("added for compiling of " + sclass);
             scToCompile.add(sclass);
         }
         taskSync();
@@ -981,30 +929,15 @@ public class LumosAgent {
                     }
                 }
             }
-            // p("compiling " + sclass);
-            // if (sclass.getName().equals("java.time.chrono.ChronoLocalDateTime")) {
-            //     Printer.v().printTo(sclass, new PrintWriter(System.out, true));
-                // compile("ChronoLocalDateTime", CompileUtils.compileClass(sclass));
-                // try {
-                //     Class<?> mc = Class.forName("org.apache.hadoop.hdfs.server.namenode.NameCache$UseCount",
-                //             true, LumosAgent.cloader);
-                //     for(Method m : mc.getMethods()){
-                //         System.out.println("J: " + m+" :: " + Modifier.toString(m.getModifiers()));
-                //     }
-                //     for(SootMethod mm : sclass.getMethods()){
-                //         System.out.println("S: " + mm.getSignature() + " :: " +
-                //                 Modifier.toString(mm.getModifiers()));
-                //     }
-                // } catch (ClassNotFoundException e) {
-                //     e.printStackTrace();
-                // }
-
-            // }
             addTask(new Runnable() {
                 @Override
                 public void run() {
                     try{
                         byte[] bytecode = CompileUtils.compileClass(sclass);
+
+                        if (sclass.getName().contains("BlockManager$1")) {
+                            compile(sclass.getName(), bytecode);
+                        }
                         cmap.put(sclass.toString(), bytecode);
                     }
                     catch(Exception e){
@@ -1014,6 +947,7 @@ public class LumosAgent {
                 }
             });
         }
+
         taskSync();
         p("Compilation done");
         return cmap;
@@ -1114,25 +1048,24 @@ public class LumosAgent {
         String basePath = "/home/jingyuan/hadoop";
         String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
         String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
-        // String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
-        // String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
+        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
+        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
         // String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
-        // String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
+        String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
         //String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
         List<String> jpaths = new ArrayList<String>();
         List<String> apaths = new ArrayList<String>();
-        // readJars(commonJarPath, jpaths);
-        // readJars(hdfsJarPath, jpaths);
+        readJars(commonJarPath, jpaths);
+        readJars(hdfsJarPath, jpaths);
         // readJars(httpfsJarPath, jpaths);
         cpaths.add(commonPath);
         cpaths.add(hdfsPath);
-        // cpaths.add(btracePath);
+        cpaths.add(btracePath);
         // cpaths.add(testPath);
         apaths.addAll(cpaths);
         apaths.add(LumosAgent.tracerJar);
         cpaths.addAll(jpaths);
-        // cpaths.add(btracePath);
         cpaths.add(LumosAgent.jrePath);
         LumosAgent.setupSoot(cpaths, apaths);
 /*
@@ -1145,25 +1078,14 @@ public class LumosAgent {
         //LumosAgent.setupClass("hdfs");
         analyzePath();
         readTranslation();
-        readInstsDoop();
     }
 
     public static void readTranslation(){
+        p("reading translation...");
         try {
             FileInputStream fis = new FileInputStream("/home/jingyuan/doopstuff/doop/lfacts/translationMap");
             ObjectInputStream ois = new ObjectInputStream(fis);
             translationMap = (ConcurrentHashMap<String, Map<String, String>>) ois.readObject();
-            //System.out.println(translationMap.entrySet().iterator().next());
-            // translationMap.forEach((k,v)->{
-            //     if(!k.contains("DatanodeID: void setIpAndXferPort")){
-            //         return;
-            //     }
-            //     p("====");
-            //     p(k);
-            //     v.forEach((k2,v2)->{
-            //         p(k2 + ":  " + v2);
-            //     });
-            // });
             ois.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -1193,6 +1115,8 @@ public class LumosAgent {
 
     public static void main(String args[]) {
         setupEnv();
+        addEntryMethods();
+        addBoundaries();
         instrument();
     }
 
