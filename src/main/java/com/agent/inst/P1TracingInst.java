@@ -21,11 +21,11 @@ public class P1TracingInst extends LInst{
 
     public String witness;
     public String base;
-    public P1TracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type) {
+    public P1TracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type, String oid) {
         super(sm, stmt, lineNum, null, type);
         this.witness = witness;
         this.base = base;
-        this.id = stmt + "::" + type;
+        this.id = oid + "::" + stmt + "::" + type;
     }
 
     @Override

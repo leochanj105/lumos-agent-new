@@ -620,6 +620,7 @@ public class LumosAgent {
                         mname.equals("<clinit>") ||
                         mname.equals("checkNNStartup") ||
                         mname.equals("verifyRequest") ||
+                        mname.equals("verifySoftwareVersion")||
                         (specialName != null && !specialName.equals("any") && !mname.equals(specialName))) {
                     continue;
                 }
@@ -679,22 +680,33 @@ public class LumosAgent {
             entryClasses.add(sm.getDeclaringClass().getName());
         }
 
-        for (SootMethod toggleM : entryMethods) {
+        SootMethod protoM = Scene.v().getMethod(
+                "<org.apache.hadoop.hdfs.protocolPB.PBHelper: org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos$DatanodeCommandProto convert(org.apache.hadoop.hdfs.server.protocol.DatanodeCommand)>");
+                for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
             List<Stmt> stmts = CompileUtils.generateStartRecording(b, toggleM.toString());
            // List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
             //stmts.addAll(CompileUtils.generateCall(b, getRRField(), "void resetCounter()"));
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
-            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                stmts = CompileUtils.generateEndRecording(b);
-                // stmts = CompileUtils.generateRRtoggle(b, getRRField(), false);
-                //stmts.addAll(CompileUtils.generateCall(b, getRRField(), "void logCounter()"));
-                b.getUnits().insertBefore(stmts, ret);
+            if(!toggleM.toString().contains("sendHeartbeat")){
+                for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                    stmts = CompileUtils.generateEndRecording(b);
+                    b.getUnits().insertBefore(stmts, ret);
+                }
+            } else {
+                Body pb = getBody(protoM);
+                for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
+                    stmts = CompileUtils.generateEndRecording(pb);
+                    pb.getUnits().insertBefore(stmts, ret);
+                }
+                protoM.setActiveBody(pb);
+                
             }
             toggleM.setActiveBody(b);
-            p(b);
+            //p(b);
         }
+        entryMethods.add(protoM);
     }
 
     public static void addAsBoundary(String sc){
@@ -793,7 +805,7 @@ public class LumosAgent {
         // if(inst == null){
         //     p("$$ " + inst);
         // 
-        return new P1TracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp);
+        return new P1TracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp, methodAndInst);
             //ExperimentInst(LumosAgent.findMethod(method), inst, -1, null, recType);
         //return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
     }
