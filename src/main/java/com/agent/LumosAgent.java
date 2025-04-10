@@ -76,16 +76,16 @@ public class LumosAgent {
     public static Set<SootMethod> pausedMethods = new HashSet<>();
     public static Set<String> entryClasses = new HashSet<>();
     public static String rrClass = "com.lumos.tracer.LumosTracer";
-    public static String tracerJar = "/tmp/LumosTracer.jar";
-    public static String bootstrapJar = "/tmp/LumosTracer-bootstrap.jar";
-    public static String jrePath = "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/rt.jar";
+    public static String tracerJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer.jar";
+    public static String bootstrapJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer-bootstrap.jar";
+    public static String jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
 
     public static Map<String, Map<String, String>> translationMap;
     
     public static byte[] forTest;
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
-    public static String jarpath = "/app/opentelemetry-javaagent.jar";
+    // public static String jarpath = "/app/opentelemetry-javaagent.jar";
     // public static String cpath = "/app/classes";
     public static String cpath = "";
     public static List<String> includeList;
@@ -223,7 +223,7 @@ public class LumosAgent {
         try {
             tracerJarFile = new JarFile(bootstrapJar);
             // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
-            toolsJarFile = new JarFile("/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar");
+            toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar");
             // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
         } catch (IOException e) {
             e.printStackTrace();
@@ -1057,13 +1057,14 @@ public class LumosAgent {
         }
     }
     public static void setupEnv(){
-        String basePath = "/home/jingyuan/hadoop";
+        // FIXME: fix basePath & tracing framework path
+        String basePath = System.getenv("LUMOS_HADOOP_DIR");
         String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
         String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
         String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
         String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
         // String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
-        String btracePath = "/home/jingyuan/tracing-framework/tracingplane/client/target/classes/";
+        String btracePath = System.getenv("LUMOS_TRACING_FRAMEWORK_DIR") + "/tracingplane/client/target/classes/";
         //String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
         List<String> jpaths = new ArrayList<String>();
@@ -1095,7 +1096,8 @@ public class LumosAgent {
     public static void readTranslation(){
         p("reading translation...");
         try {
-            FileInputStream fis = new FileInputStream("/home/jingyuan/doopstuff/doop/lfacts/translationMap");
+            // FIXME: Tmp hack :(
+            FileInputStream fis = new FileInputStream(System.getenv("TRANSLATION_MAP_PATH"));
             ObjectInputStream ois = new ObjectInputStream(fis);
             translationMap = (ConcurrentHashMap<String, Map<String, String>>) ois.readObject();
             ois.close();
