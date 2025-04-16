@@ -20,11 +20,18 @@ import soot.jimple.Stmt;
 public class PhasedTracingInst extends LInst{
     public String witness;
     public String base;
-    public PhasedTracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type, String oid) {
+    public boolean isP1;
+    public PhasedTracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type, String oid, boolean isP1) {
         super(sm, stmt, lineNum, null, type);
         this.witness = witness;
         this.base = base;
+        this.isP1 = isP1;
         this.id = oid + "::" + stmt + "::" + type;
+    }
+
+    public PhasedTracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type,
+            String oid) {
+        this(sm, stmt, lineNum, base, witness, type, oid, true);
     }
 
     @Override
@@ -83,9 +90,21 @@ public class PhasedTracingInst extends LInst{
                 followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, baseV, id + "::base"));
             }
         }
-        if (!witness.equals("[NONE]")) {
-            witnessV = CompileUtils.findLocal(b, witness);
+        if (!witness.equals("[NONE]") || (!isP1)) {
+            if(!isP1){
+                if (actualStmt instanceof AssignStmt) {
+                    witnessV = ((AssignStmt) actualStmt).getLeftOp();
+                    //needReplace = ((AssignStmt) actualStmt).getRightOp() instanceof JNewExpr;
+                }
+                else{
+                    System.out.println("P2 left hand variable can't be found: " + actualStmt);
+                }
+            }
+            else {
+                witnessV = CompileUtils.findLocal(b, witness);
+            }
             if (witnessV == null && witness.contains("#")) {
+                // FIXME: temporary hack for unstable variable names containing "#"
                 witnessV = CompileUtils.findLocal(b, witness.substring(0, witness.indexOf("#")));
             }
             if (witnessV == null) {

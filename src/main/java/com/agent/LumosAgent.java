@@ -95,7 +95,7 @@ public class LumosAgent {
 
     public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
 
-    // %Issue: these classes are static and will generate new native methods 
+    // FIXME: these classes are static and will generate new native methods 
     // at runtime
         "java.util.stream.StreamSpliterators$SliceSpliterator$OfDouble",
         "java.util.stream.Tripwire",
@@ -367,7 +367,7 @@ public class LumosAgent {
         Options.v().setPhaseOption("jb", "preserve-source-annotations:true");
         Options.v().setPhaseOption("jb", "stabilize-local-names:true");
         
-        // %Issue: lambda unresolved
+        // %FIXME: lambda unresolved
         Options.v().setPhaseOption("jb", "model-lambdametafactory:false");
         // Need this to avoid the need to provide an entry point
         Options.v().setPhaseOption("cg", "all-reachable:true");
@@ -503,7 +503,7 @@ public class LumosAgent {
         p("setting up class...");
         List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
         for(String s:retrieveHistory){
-            // %Issue: lambda is currently unresolved
+            // FIXME: lambda is currently unresolved
             if(s.contains("$lambda_")){
                 continue;
             }
@@ -761,7 +761,7 @@ public class LumosAgent {
         }
     }
 
-    // %Issue: currently we only support instrumenting once;
+    // FIXME: currently we only support instrumenting once;
     // the getBody should ideally cache original body for future instrumentation
     public static Body getBody(SootMethod sm){
             if(!sm.hasActiveBody()){
@@ -783,8 +783,7 @@ public class LumosAgent {
         readInstsDoop();
     }
 
-    public static LInst fromDoopSummary(String summary){
-        String[] items = summary.split("\t");
+    public static LInst fromDoopSummary(String[] items, boolean isP1){
         String methodAndInst = items[0];
         String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
         String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
@@ -805,7 +804,8 @@ public class LumosAgent {
         // if(inst == null){
         //     p("$$ " + inst);
         // 
-        return new PhasedTracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp, methodAndInst);
+        return new PhasedTracingInst(LumosAgent.findMethod(method),
+                inst, -1, baseValue, witness, tp, methodAndInst, isP1);
             //ExperimentInst(LumosAgent.findMethod(method), inst, -1, null, recType);
         //return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
     }
@@ -827,7 +827,7 @@ public class LumosAgent {
     public static void readInsts() {
         p("reading inst files...");
         String instFile = System.getProperty("P1InstFile");
-        String instFile = System.getProperty("P2InstFile");
+        String instFile2 = System.getProperty("P2InstFile");
         List<String> allInsts = CompileUtils.readFrom(instFile);
         SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
         SootMethod sm = sc.getMethodByName("<clinit>");
@@ -836,7 +836,7 @@ public class LumosAgent {
             // if(!s.contains("$lambda")){
             //     continue;
             // }
-            // %Issue: lambda currently unresolved
+            // FIXME: lambda currently unresolved
             if(s.contains("$lambda_")){
                 continue;
             }
@@ -846,6 +846,8 @@ public class LumosAgent {
 
         String baseInstFile = System.getProperty("baseInstFile");
         allInsts = CompileUtils.readFrom(baseInstFile);
+
+
         for(String s : allInsts){
             if(s.contains("$lambda_")){
                 continue;
@@ -878,7 +880,7 @@ public class LumosAgent {
             if (checkSkipped(sclass)) {
                 continue;
             }
-            // %Issue: this method is too large
+            // FIXME: this method is too large
             if(sm.getSignature().contains("org.apache.hadoop.util.PureJavaCrc32: void <clinit>()")){ continue;}
             // if(!sclass.getName().contains(")){ continue;}
             List<Stmt> targetstmts = new ArrayList<>();
@@ -1109,20 +1111,47 @@ public class LumosAgent {
 
     public static void readInstsDoop() {
         p("reading inst files...");
-        String instFile = System.getProperty("instFile");
-        List<String> allInsts = CompileUtils.readFrom(instFile);
-
-        for (String s : allInsts) {
-            // %Issue: lambda currently unresolved
+        String P1InstFile = System.getProperty("P1InstFile");
+        String P2InstFile = System.getProperty("P2InstFile");
+        List<String> P1Insts = CompileUtils.readFrom(P1InstFile);
+        List<String> P2Insts = CompileUtils.readFrom(P2InstFile);
+        Set<String> visitedStmt = new HashSet<>();
+        for (String s : P2Insts) {
+            // FIXME: lambda currently unresolved
             if(s.contains("$lambda_")){
                 continue;
             }
-            LInst inst = fromDoopSummary(s);
+
+            String[] rawItems = s.split("\t");
+            String[] items = Arrays.copyOfRange(rawItems, 1, rawItems.length);
+            String minst = items[0];
+            if(visitedStmt.contains(minst)){
+                continue;
+            }
+            visitedStmt.add(minst);
+            LInst inst = fromDoopSummary(items, false);
             if(inst == null){
                 continue;
             }
-            // p(inst.sm + ":  " + inst.stmt);
-            //System.out.println(inst.getActualStmt(inst.sm.getActiveBody()));
+            activate(inst);
+        }
+
+        for (String s : P1Insts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] items = s.split("\t");
+            String minst = items[0];
+            if(visitedStmt.contains(minst)){
+                continue;
+            }
+            visitedStmt.add(minst);
+            LInst inst = fromDoopSummary(items, true);
+            if(inst == null){
+                continue;
+            }
             activate(inst);
         }
 
