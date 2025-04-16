@@ -25,7 +25,7 @@ import com.agent.compile.CompileUtils;
 import com.agent.inst.ConcurrencyInst;
 import com.agent.inst.ExperimentInst;
 import com.agent.inst.LInst;
-import com.agent.inst.P1TracingInst;
+import com.agent.inst.PhasedTracingInst;
 import com.agent.inst.ValueRecordingInst;
 
 import soot.Body;
@@ -805,7 +805,7 @@ public class LumosAgent {
         // if(inst == null){
         //     p("$$ " + inst);
         // 
-        return new P1TracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp, methodAndInst);
+        return new PhasedTracingInst(LumosAgent.findMethod(method), inst, -1, baseValue, witness, tp, methodAndInst);
             //ExperimentInst(LumosAgent.findMethod(method), inst, -1, null, recType);
         //return new ValueRecordingInst(LumosAgent.findMethod(method), inst, -1, "vread");
     }
@@ -826,7 +826,8 @@ public class LumosAgent {
     }
     public static void readInsts() {
         p("reading inst files...");
-        String instFile = System.getProperty("instFile");
+        String instFile = System.getProperty("P1InstFile");
+        String instFile = System.getProperty("P2InstFile");
         List<String> allInsts = CompileUtils.readFrom(instFile);
         SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
         SootMethod sm = sc.getMethodByName("<clinit>");

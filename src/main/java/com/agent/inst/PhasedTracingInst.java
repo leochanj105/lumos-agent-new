@@ -17,11 +17,10 @@ import soot.jimple.AssignStmt;
 import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
 
-public class P1TracingInst extends LInst{
-
+public class PhasedTracingInst extends LInst{
     public String witness;
     public String base;
-    public P1TracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type, String oid) {
+    public PhasedTracingInst(SootMethod sm, String stmt, int lineNum, String base, String witness, String type, String oid) {
         super(sm, stmt, lineNum, null, type);
         this.witness = witness;
         this.base = base;
