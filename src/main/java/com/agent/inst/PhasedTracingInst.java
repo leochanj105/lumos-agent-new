@@ -3,6 +3,8 @@ package com.agent.inst;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
 
@@ -45,8 +47,10 @@ public class PhasedTracingInst extends LInst{
         Stmt endStmt = CompileUtils.assign(endLocal,CompileUtils.invoke(timem));
         PatchingChain<Unit> units = b.getUnits();
         List<Stmt> followings = new ArrayList<>();
-
-        Stmt actualStmt = (AssignStmt) getActualStmt(b);
+        Stmt actualStmt = getActualStmt(b);
+        if(!(actualStmt instanceof AssignStmt)){
+            System.out.println(actualStmt);
+        }
         if(actualStmt == null){
             System.out.println("!! Null stmt " + stmt + "\n" + b);
             return null;

@@ -621,6 +621,13 @@ public class LumosAgent {
                         mname.equals("checkNNStartup") ||
                         mname.equals("verifyRequest") ||
                         mname.equals("verifySoftwareVersion")||
+                        mname.equals("verifyLayoutVersion")||
+                        mname.equals("getClientMachine") ||
+                        mname.equals("getServiceRpcAddress") ||
+                        mname.equals("getRpcAddress") ||
+                        mname.equals("getRemoteUser") ||
+                        mname.equals("checkPathLength") ||
+                        mname.equals("readOp") ||
                         (specialName != null && !specialName.equals("any") && !mname.equals(specialName))) {
                     continue;
                 }
@@ -951,7 +958,7 @@ public class LumosAgent {
                         byte[] bytecode = CompileUtils.compileClass(sclass);
 
                         if (sclass.getName().contains("BlockManager$1")) {
-                            compile(sclass.getName(), bytecode);
+                            //compile(sclass.getName(), bytecode);
                         }
                         cmap.put(sclass.toString(), bytecode);
                     }
@@ -1121,7 +1128,9 @@ public class LumosAgent {
             if(s.contains("$lambda_")){
                 continue;
             }
-
+            if(!s.contains("unary-read")){
+                continue;
+            }
             String[] rawItems = s.split("\t");
             String[] items = Arrays.copyOfRange(rawItems, 1, rawItems.length);
             String minst = items[0];
@@ -1129,6 +1138,7 @@ public class LumosAgent {
                 continue;
             }
             visitedStmt.add(minst);
+            //p("%% " + minst);
             LInst inst = fromDoopSummary(items, false);
             if(inst == null){
                 continue;

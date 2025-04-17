@@ -13,7 +13,7 @@ maven.buildMavenPackage {
 
   src = ./.;
 
-  mvnHash = "sha256-Bwau0KzTzEVBmLNjmziumLwzrgMtHw0uwxILIu4qJZU=";
+  mvnHash = "sha256-Hnfn3ciwyyQBhD4cwXLHnWp9sB85yYfJV4M38JXbAUY=";
 
   mvnParameters = lib.escapeShellArgs [
     "-T"
