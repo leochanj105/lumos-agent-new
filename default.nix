@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, mvnHash
+}:
 
 let
   inherit (pkgs)
@@ -13,7 +15,7 @@ maven.buildMavenPackage {
 
   src = ./.;
 
-  mvnHash = "sha256-Hnfn3ciwyyQBhD4cwXLHnWp9sB85yYfJV4M38JXbAUY=";
+  inherit mvnHash;
 
   mvnParameters = lib.escapeShellArgs [
     "-T"
