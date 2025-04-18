@@ -91,6 +91,7 @@ public class LumosAgent {
     public static List<String> includeList;
     public static List<String> processList;
     public static Set<SootClass> baseInstClasses = new HashSet<>();
+    public static boolean TimeOn = true;
     // public static boolean 
 
     public static Set<String> skippedClasses = new HashSet<>(Arrays.asList(new String[]{
@@ -237,6 +238,11 @@ public class LumosAgent {
         String componentStr = System.getProperty("component");
         if(componentStr != null){
             component = componentStr;
+        }
+
+        String ton = System.getProperty("TimeOn");
+        if (ton != null && ton.equals("false")) {
+            LumosAgent.TimeOn = false;
         }
         // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
 
@@ -689,7 +695,7 @@ public class LumosAgent {
 
         SootMethod protoM = Scene.v().getMethod(
                 "<org.apache.hadoop.hdfs.protocolPB.PBHelper: org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos$DatanodeCommandProto convert(org.apache.hadoop.hdfs.server.protocol.DatanodeCommand)>");
-                for (SootMethod toggleM : entryMethods) {
+        for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
             List<Stmt> stmts = CompileUtils.generateStartRecording(b, toggleM.toString());

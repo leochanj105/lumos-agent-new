@@ -19,7 +19,7 @@ import soot.jimple.AssignStmt;
 import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
 
-public class PhasedTracingInst extends LInst{
+public class PhasedTracingInst extends LInst {
     public String witness;
     public String base;
     public boolean isP1;
@@ -56,32 +56,10 @@ public class PhasedTracingInst extends LInst{
             return null;
         }
         Stmt anchor = actualStmt;
-
-        boolean needReplace = false;
-        /*
-        if (!sm.isStatic() && base.equals("this") && sm.getName().equals("<init>")) {
-            needReplace = true;
+        if (LumosAgent.TimeOn) {
+            units.insertBefore(startStmt, actualStmt);
+            followings.add(endStmt);
         }
-        if (needReplace) {
-            for (Unit u : units) {
-                Stmt nstmt = (Stmt) u;
-                if (nstmt.containsInvokeExpr() && nstmt.getInvokeExpr() instanceof SpecialInvokeExpr) {
-                    SpecialInvokeExpr iexpr = (SpecialInvokeExpr) nstmt.getInvokeExpr();
-                    if (iexpr.getBase().toString().equals("this") && iexpr.getMethod().getName().equals("<init>")) {
-                        if(nstmt.getJavaSourceStartLineNumber() > anchor.getJavaSourceStartLineNumber()){
-                            anchor = nstmt;
-                        }
-                    }
-                }
-            }
-        }
-        */
-        units.insertBefore(startStmt, actualStmt);
-        //units.insertAfter(endStmt, actualStmt);
-        // if(anchor.equals(actualStmt)){
-        //     anchor = endStmt;
-        // }
-        followings.add(endStmt);
         Value baseV = null, witnessV = null;
         if(!base.equals("[NONE]")){
             baseV = CompileUtils.findLocal(b, base);
@@ -117,8 +95,10 @@ public class PhasedTracingInst extends LInst{
                 followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, witnessV, id + "::witness"));
             }
         }
-        followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id+"::start"));
-        followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id+"::end"));
+        if (LumosAgent.TimeOn) {
+            followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id + "::start"));
+            followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id + "::end"));
+        }
         units.insertAfter(followings, anchor);
         return null;
     }
