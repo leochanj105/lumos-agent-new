@@ -1174,10 +1174,11 @@ public class LumosAgent {
     }
 
     public static void main(String args[]) {
-        setupEnv();
-        addEntryMethods();
-        addBoundaries();
-        instrument();
+        System.out.println("main!!");
+        // setupEnv();
+        // addEntryMethods();
+        // addBoundaries();
+        // instrument();
     }
 
 }

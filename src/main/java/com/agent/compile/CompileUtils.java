@@ -443,8 +443,13 @@ public class CompileUtils {
             logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
         }
         StringConstant tagVal = StringConstant.v(tag);
-        Stmt invokeStmt = call(invoke(logMethod, v, tagVal));
-
+        Stmt invokeStmt = null;
+        String logNone = System.getProperty("LogNone");
+        if (logNone != null && logNone.equals("true")) {
+            invokeStmt = call(invoke(Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logNone")));
+        } else {
+            invokeStmt = call(invoke(logMethod, v, tagVal));
+        }
         List<Stmt> stlist = new ArrayList<>();
         stlist.add(invokeStmt);
         return stlist;
