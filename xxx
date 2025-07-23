@@ -1,0 +1,441 @@
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+reading inst files...
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        nop;
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>(ipAddr, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        nop;
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>(ipAddr, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack6, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        nop;
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>(this, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>(ipAddr, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack6, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        nop;
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>(this, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>(ipAddr, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack3, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack6, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+    private void setIpAndXferPort(java.lang.String, int)
+    {
+        int xferPort;
+        java.lang.String ipAddr, $stack4, $stack7;
+        java.lang.StringBuilder $stack3, $stack5, $stack6;
+        org.apache.hadoop.hdfs.protocol.DatanodeID this;
+
+        this := @this: org.apache.hadoop.hdfs.protocol.DatanodeID;
+
+        ipAddr := @parameter0: java.lang.String;
+
+        xferPort := @parameter1: int;
+
+        nop;
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(int,java.lang.String)>(xferPort, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>(this, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>(ipAddr, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String ipAddr> = ipAddr;
+/*103*/
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: int xferPort> = xferPort;
+/*104*/
+
+        $stack3 = new java.lang.StringBuilder;
+/*105*/
+
+        $stack4 = staticinvoke <java.lang.String: java.lang.String valueOf(java.lang.Object)>(ipAddr);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack4, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        specialinvoke $stack3.<java.lang.StringBuilder: void <init>(java.lang.String)>($stack4);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack3, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack5 = virtualinvoke $stack3.<java.lang.StringBuilder: java.lang.StringBuilder append(java.lang.String)>(":");
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack5, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack6 = virtualinvoke $stack5.<java.lang.StringBuilder: java.lang.StringBuilder append(int)>(xferPort);
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logAddress(java.lang.Object,java.lang.String)>($stack6, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        $stack7 = virtualinvoke $stack6.<java.lang.StringBuilder: java.lang.String toString()>();
+/*105*/
+
+        staticinvoke <com.lumos.tracer.LumosTracer: void logTrace(java.lang.Object,java.lang.String)>($stack7, "&org.apache.hadoop.hdfs.protocol.DatanodeID:setIpAndXferPort&");
+
+        this.<org.apache.hadoop.hdfs.protocol.DatanodeID: java.lang.String xferAddr> = $stack7;
+/*105*/
+
+        return;
+/*106*/
+    }
+
+Instrumentation done.
+Now compiling...
+Compilation done

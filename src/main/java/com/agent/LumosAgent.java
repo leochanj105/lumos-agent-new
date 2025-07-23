@@ -78,10 +78,11 @@ public class LumosAgent {
     public static String rrClass = "com.lumos.tracer.LumosTracer";
     public static String tracerJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer.jar";
     public static String bootstrapJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer-bootstrap.jar";
-    public static String jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
+    // public static String jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
+    public static String jrePath = System.getenv("JAVA_HOME") + "/jre/lib/rt.jar";
 
     public static Map<String, Map<String, String>> translationMap;
-    
+    public static Map<String, String> invTranslationMap;
     public static byte[] forTest;
     public static String testclass;
     // public static String jarpath = "/app/opentelemetry-api-trace-0.13.1.jar";
@@ -224,7 +225,8 @@ public class LumosAgent {
         try {
             tracerJarFile = new JarFile(bootstrapJar);
             // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
-            toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar");
+            // toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar");
+            toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/tools.jar");
             // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
         } catch (IOException e) {
             e.printStackTrace();
@@ -556,6 +558,7 @@ public class LumosAgent {
                 sm.retrieveActiveBody();
                 methodMap.put(sm.getSignature(), sm);
                 bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
+
             }
             classMap.put(cls.toString(), cls);
             // CompileUtils.outputJimple(cls, "AAA");
@@ -1120,10 +1123,21 @@ public class LumosAgent {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("!! " + translationMap.size());
+        invTranslationMap = new HashMap<>();
+        
+        for(String mname : translationMap.keySet()){
+            Map<String,String> map = translationMap.get(mname);
+            for(String stmtid : map.keySet()){
+                String actual = map.get(stmtid);
+                invTranslationMap.put(actual, mname+"/"+stmtid);
+            }
+        }
     }
 
     public static void readInstsDoop() {
         p("reading inst files...");
+        // [FIXME] 1. Read All Inst; 2. Select each nond
         String P1InstFile = System.getProperty("P1InstFile");
         String P2InstFile = System.getProperty("P2InstFile");
         List<String> P1Insts = CompileUtils.readFrom(P1InstFile);
@@ -1175,7 +1189,8 @@ public class LumosAgent {
 
     public static void main(String args[]) {
         System.out.println("main!!");
-        // setupEnv();
+        setupEnv();
+        Analysis.doAnalysis();
         // addEntryMethods();
         // addBoundaries();
         // instrument();

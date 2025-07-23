@@ -1,2 +1,7 @@
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-$JAVA_HOME/bin/java -DinstFile=/home/jingyuan/doopstuff/doop/lfacts/AllToRecord.csv -Dverbose=analysis -jar target/LumosAgent.jar
+
+export LUMOS_TRACER_DIR=/tmp/
+export LUMOS_HADOOP_DIR=/home/jingyuan/hadoop
+export LUMOS_TRACING_FRAMEWORK_DIR=/home/jingyuan/tracing-framework/
+export TRANSLATION_MAP_PATH=/home/jingyuan/doopstuff/doop/lfacts/translationMap
+$JAVA_HOME/bin/java -Dverbose=analysis -jar target/LumosAgent.jar
