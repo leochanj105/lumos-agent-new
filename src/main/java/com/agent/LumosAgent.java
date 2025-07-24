@@ -25,6 +25,7 @@ import com.agent.compile.CompileUtils;
 import com.agent.inst.ConcurrencyInst;
 import com.agent.inst.ExperimentInst;
 import com.agent.inst.LInst;
+import com.agent.inst.NondInst;
 import com.agent.inst.PhasedTracingInst;
 import com.agent.inst.ValueRecordingInst;
 
@@ -59,9 +60,9 @@ public class LumosAgent {
     public static Map<String, SootClass> classMap = new ConcurrentHashMap<>();
     public static Map<String, Body> bodyMap = new ConcurrentHashMap<>();
 
-    public static Set<LumosInstrumentation> allTPs = new HashSet<>();
+    // public static Set<LumosInstrumentation> allTPs = new HashSet<>();
     public static Set<LInst> allInsts = new HashSet<>();
-    public static Map<String, Set<LumosInstrumentation>> methodTPMap = new HashMap<>();
+    // public static Map<String, Set<LumosInstrumentation>> methodTPMap = new HashMap<>();
     public static Map<String, Set<LInst>> activeInsts = new HashMap<>();
     // public static Set<DBInstrumentationPoint> allTPs = new HashSet<>();
     // public static HashMap<String, Set<TracePoint>> methodTPMap = new HashMap<>();
@@ -70,6 +71,7 @@ public class LumosAgent {
 
     // public static String logger = "stdout";
     // public static String rrClass = "com.mycompany.app.App";
+    // [FIXME] add components from env vars
     public static String component = "nn";
     public static Set<SootMethod> entryMethods = new HashSet<>();
     public static Set<SootMethod> boundaryMethods = new HashSet<>();
@@ -79,7 +81,19 @@ public class LumosAgent {
     public static String tracerJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer.jar";
     public static String bootstrapJar = System.getenv("LUMOS_TRACER_DIR") + "/LumosTracer-bootstrap.jar";
     // public static String jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
-    public static String jrePath = System.getenv("JAVA_HOME") + "/jre/lib/rt.jar";
+    public static String jrePath;
+    public static String toolsJarPath;
+    static{
+        String isDev = System.getProperty("Dev");
+        if(isDev != null){
+            jrePath = System.getenv("JAVA_HOME") + "/jre/lib/rt.jar";
+            toolsJarPath = System.getenv("JAVA_HOME") + "/tools.jar";
+        }
+        else{
+            jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
+            toolsJarPath = System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar";
+        }
+    }
 
     public static Map<String, Map<String, String>> translationMap;
     public static Map<String, String> invTranslationMap;
@@ -224,9 +238,8 @@ public class LumosAgent {
         JarFile toolsJarFile = null;
         try {
             tracerJarFile = new JarFile(bootstrapJar);
+            toolsJarFile = new JarFile(toolsJarPath);
             // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
-            // toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar");
-            toolsJarFile = new JarFile(System.getenv("JAVA_HOME") + "/tools.jar");
             // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
         } catch (IOException e) {
             e.printStackTrace();
@@ -317,40 +330,40 @@ public class LumosAgent {
         return "";
     }
 
-    public static boolean addTP(LumosInstrumentation tp) {
-        if (allTPs.contains(tp)) {
-            return false;
-        }
-        allTPs.add(tp);
-        if (!methodTPMap.containsKey(tp.getSm())) {
-            methodTPMap.put(tp.getSm(), new HashSet<>());
-        }
+    // public static boolean addTP(LumosInstrumentation tp) {
+    //     if (allTPs.contains(tp)) {
+    //         return false;
+    //     }
+    //     allTPs.add(tp);
+    //     if (!methodTPMap.containsKey(tp.getSm())) {
+    //         methodTPMap.put(tp.getSm(), new HashSet<>());
+    //     }
 
-        methodTPMap.get(tp.getSm()).add(tp);
-        return true;
-    }
+    //     methodTPMap.get(tp.getSm()).add(tp);
+    //     return true;
+    // }
 
-    public static void removeAllTPs() {
-        for (String m : methodTPMap.keySet()) {
-            Set<LumosInstrumentation> lms = methodTPMap.get(m);
-            if (lms != null) {
-                lms.clear();
-            }
-        }
-        allTPs.clear();
-    }
+    // public static void removeAllTPs() {
+    //     for (String m : methodTPMap.keySet()) {
+    //         Set<LumosInstrumentation> lms = methodTPMap.get(m);
+    //         if (lms != null) {
+    //             lms.clear();
+    //         }
+    //     }
+    //     allTPs.clear();
+    // }
 
-    public static boolean removeTP(LumosInstrumentation tp) {
-        if (!allTPs.contains(tp)) {
-            return false;
-        }
-        allTPs.remove(tp);
-        if (methodTPMap.containsKey(tp.getSm())) {
-            methodTPMap.get(tp.getSm()).remove(tp);
-            return true;
-        }
-        return false;
-    }
+    // public static boolean removeTP(LumosInstrumentation tp) {
+    //     if (!allTPs.contains(tp)) {
+    //         return false;
+    //     }
+    //     allTPs.remove(tp);
+    //     if (methodTPMap.containsKey(tp.getSm())) {
+    //         methodTPMap.get(tp.getSm()).remove(tp);
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     public static void setSootOptions(){
         G.reset();
@@ -791,14 +804,159 @@ public class LumosAgent {
     }
 
     public static void lplay() {
+
         addEntryMethods();
-        //addBoundaries();
+
+        // addBoundaries();
+        loadInstrumentation();
         p("----Analysis Done------");
         analyzeReady = true;
-        //readInsts();
-        readInstsDoop();
+        // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
+        // readInstsDoop();
+    }
+    
+    // Load all possible instrumentation
+    // Local/snapshot
+    // For each selected RNode/WNode for inDepth and boundary, match all instrumentations
+    public static void loadInstrumentation(){
+        String ConcurrencyInstFile = System.getProperty("ConcurrencyInst");
+        List<String> ConcurrencyInsts = CompileUtils.readFrom(ConcurrencyInstFile);
+        for (String s : ConcurrencyInsts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] rawItems = s.split("\t");
+            String methodAndInst = rawItems[0];
+            String v = rawItems[1];
+            String nondType = rawItems[2];
+
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                continue;
+            }
+            String stmt = translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
+            // p(inst);
+            activate(inst);
+        }
+
+
+        String ContentInstFile = System.getProperty("ContentInst");
+        List<String> ContentInsts = CompileUtils.readFrom(ContentInstFile);
+        for (String s : ContentInsts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] rawItems = s.split("\t");
+            String nondType = rawItems[0];
+            String methodAndInst = rawItems[1];
+            String v = rawItems[2];
+
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                continue;
+            }
+            String stmt = translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
+            activate(inst);
+        }
+
+        String InputInstFile = System.getProperty("InputInst");
+        List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
+        for (String s : InputInsts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] rawItems = s.split("\t");
+            String methodAndInst = rawItems[0];
+            String v = rawItems[1];
+
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                continue;
+            }
+            String stmt = translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
+            activate(inst);
+        }
+        // boundaries
     }
 
+    public static void readInstsDoop() {
+        p("reading inst files...");
+        // [FIXME] 1. Read All Inst; 2. Select each nond
+        String P1InstFile = System.getProperty("P1InstFile");
+        String P2InstFile = System.getProperty("P2InstFile");
+        List<String> P1Insts = CompileUtils.readFrom(P1InstFile);
+        List<String> P2Insts = CompileUtils.readFrom(P2InstFile);
+        Set<String> visitedStmt = new HashSet<>();
+        for (String s : P2Insts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+            if(!s.contains("unary-read")){
+                continue;
+            }
+            String[] rawItems = s.split("\t");
+            String[] items = Arrays.copyOfRange(rawItems, 1, rawItems.length);
+            String minst = items[0];
+            if(visitedStmt.contains(minst)){
+                continue;
+            }
+            visitedStmt.add(minst);
+            //p("%% " + minst);
+            LInst inst = fromDoopSummary(items, false);
+            if(inst == null){
+                continue;
+            }
+            activate(inst);
+        }
+
+        for (String s : P1Insts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] items = s.split("\t");
+            String minst = items[0];
+            if(visitedStmt.contains(minst)){
+                continue;
+            }
+            visitedStmt.add(minst);
+            LInst inst = fromDoopSummary(items, true);
+            if(inst == null){
+                continue;
+            }
+            activate(inst);
+        }
+
+    }
     public static LInst fromDoopSummary(String[] items, boolean isP1){
         String methodAndInst = items[0];
         String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
@@ -840,40 +998,40 @@ public class LumosAgent {
             return new ValueRecordingInst(sm, stmt, lineNum, type);
         }
     }
-    public static void readInsts() {
-        p("reading inst files...");
-        String instFile = System.getProperty("P1InstFile");
-        String instFile2 = System.getProperty("P2InstFile");
-        List<String> allInsts = CompileUtils.readFrom(instFile);
-        SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
-        SootMethod sm = sc.getMethodByName("<clinit>");
+    // public static void readInsts() {
+    //     p("reading inst files...");
+    //     String instFile = System.getProperty("P1InstFile");
+    //     String instFile2 = System.getProperty("P2InstFile");
+    //     List<String> allInsts = CompileUtils.readFrom(instFile);
+    //     SootClass sc = Scene.v().getSootClass("java.time.temporal.TemporalQueries");
+    //     SootMethod sm = sc.getMethodByName("<clinit>");
 
-        for (String s : allInsts) {
-            // if(!s.contains("$lambda")){
-            //     continue;
-            // }
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-            LInst inst = fromSummary(s);
-            activate(inst);
-        }
+    //     for (String s : allInsts) {
+    //         // if(!s.contains("$lambda")){
+    //         //     continue;
+    //         // }
+    //         // FIXME: lambda currently unresolved
+    //         if(s.contains("$lambda_")){
+    //             continue;
+    //         }
+    //         LInst inst = fromSummary(s);
+    //         activate(inst);
+    //     }
 
-        String baseInstFile = System.getProperty("baseInstFile");
-        allInsts = CompileUtils.readFrom(baseInstFile);
+    //     String baseInstFile = System.getProperty("baseInstFile");
+    //     allInsts = CompileUtils.readFrom(baseInstFile);
 
 
-        for(String s : allInsts){
-            if(s.contains("$lambda_")){
-                continue;
-            }
-            String[] items = s.split(LInst.SEPARATOR);
-            SootMethod m = LumosAgent.findMethod(items[1]);
-            SootClass c = m.getDeclaringClass();
-            baseInstClasses.add(c);
-        }
-    }
+    //     for(String s : allInsts){
+    //         if(s.contains("$lambda_")){
+    //             continue;
+    //         }
+    //         String[] items = s.split(LInst.SEPARATOR);
+    //         SootMethod m = LumosAgent.findMethod(items[1]);
+    //         SootClass c = m.getDeclaringClass();
+    //         baseInstClasses.add(c);
+    //     }
+    // }
 
     public static void activate(LInst inst) {
         if (allInsts.contains(inst)) {
@@ -1002,67 +1160,67 @@ public class LumosAgent {
         }
     }
 
-    public static Map<String, byte[]> instrumentOld() {
-        Map<String, byte[]> cmap = new HashMap<>();
-        Set<SootClass> scToCompile = new HashSet<>();
-        for (String smstr : methodTPMap.keySet()) {
-            SootMethod sm = findMethod(smstr);
-            //Body b = findBody(sm.toString());
-            Body b = (Body)getBody(sm).clone();
-            SootClass sclass = findClass(sm.getDeclaringClass().getName());
-            List<Stmt> targetstmts = new ArrayList<>();
-            List<LumosInstrumentation> targetInsts = new ArrayList<>();
-            PatchingChain<Unit> units = b.getUnits();
+    //public static Map<String, byte[]> instrumentOld() {
+    //    Map<String, byte[]> cmap = new HashMap<>();
+    //    Set<SootClass> scToCompile = new HashSet<>();
+    //    for (String smstr : methodTPMap.keySet()) {
+    //        SootMethod sm = findMethod(smstr);
+    //        //Body b = findBody(sm.toString());
+    //        Body b = (Body)getBody(sm).clone();
+    //        SootClass sclass = findClass(sm.getDeclaringClass().getName());
+    //        List<Stmt> targetstmts = new ArrayList<>();
+    //        List<LumosInstrumentation> targetInsts = new ArrayList<>();
+    //        PatchingChain<Unit> units = b.getUnits();
 
-            // This two-step way is needed to avoid inserted stmts
-            // from breaking the labeling
-            for (LumosInstrumentation inst : methodTPMap.get(smstr)) {
-                inst.setBody(b);
-                Stmt stmt = inst.getActualStmt();
-                targetstmts.add(stmt);
-                targetInsts.add(inst);
-            }
+    //        // This two-step way is needed to avoid inserted stmts
+    //        // from breaking the labeling
+    //        for (LumosInstrumentation inst : methodTPMap.get(smstr)) {
+    //            inst.setBody(b);
+    //            Stmt stmt = inst.getActualStmt();
+    //            targetstmts.add(stmt);
+    //            targetInsts.add(inst);
+    //        }
 
-            for (int i = 0; i < targetstmts.size(); i++) {
-                Stmt stmt = targetstmts.get(i);
-                LumosInstrumentation inst = targetInsts.get(i);
-                if (!(inst instanceof TimestampedInstrumentation)) {
-                    List<Stmt> inserts = inst.addInsts();
-                    if (inserts.size() > 0) {
-                        CompileUtils.insertAt(units, inserts, stmt, inst.isBefore());
-                    }
-                }
-            }
+    //        for (int i = 0; i < targetstmts.size(); i++) {
+    //            Stmt stmt = targetstmts.get(i);
+    //            LumosInstrumentation inst = targetInsts.get(i);
+    //            if (!(inst instanceof TimestampedInstrumentation)) {
+    //                List<Stmt> inserts = inst.addInsts();
+    //                if (inserts.size() > 0) {
+    //                    CompileUtils.insertAt(units, inserts, stmt, inst.isBefore());
+    //                }
+    //            }
+    //        }
 
-            for (int i = 0; i < targetstmts.size(); i++) {
-                Stmt stmt = targetstmts.get(i);
-                LumosInstrumentation inst = targetInsts.get(i);
-                if (inst instanceof TimestampedInstrumentation) {
-                    List<Stmt> inserts = inst.addInsts();
-                    if (inserts.size() > 0) {
-                        CompileUtils.insertAt(units, inserts.get(0),stmt, true);
-                        inserts.remove(0);
-                        CompileUtils.insertAt(units, inserts, stmt, false);
-                        for (Unit uu : units) {
-                            p(uu + "");
-                        }
-                    }
+    //        for (int i = 0; i < targetstmts.size(); i++) {
+    //            Stmt stmt = targetstmts.get(i);
+    //            LumosInstrumentation inst = targetInsts.get(i);
+    //            if (inst instanceof TimestampedInstrumentation) {
+    //                List<Stmt> inserts = inst.addInsts();
+    //                if (inserts.size() > 0) {
+    //                    CompileUtils.insertAt(units, inserts.get(0),stmt, true);
+    //                    inserts.remove(0);
+    //                    CompileUtils.insertAt(units, inserts, stmt, false);
+    //                    for (Unit uu : units) {
+    //                        p(uu + "");
+    //                    }
+    //                }
 
-                }
-            }
-            sm.setActiveBody(b);
-            scToCompile.add(sclass);
-        }
+    //            }
+    //        }
+    //        sm.setActiveBody(b);
+    //        scToCompile.add(sclass);
+    //    }
 
-        for (SootClass sclass : scToCompile) {
-            byte[] bytecode = CompileUtils.compileClass(sclass);
-            forTest = bytecode;
-            // if(sclass.)
-            cmap.put(sclass.toString(), bytecode);
+    //    for (SootClass sclass : scToCompile) {
+    //        byte[] bytecode = CompileUtils.compileClass(sclass);
+    //        forTest = bytecode;
+    //        // if(sclass.)
+    //        cmap.put(sclass.toString(), bytecode);
 
-        }
-        return cmap;
-    }
+    //    }
+    //    return cmap;
+    //}
 
     public static void readJars(String path, List<String> jars){
         File folder = new File(path);
@@ -1135,62 +1293,12 @@ public class LumosAgent {
         }
     }
 
-    public static void readInstsDoop() {
-        p("reading inst files...");
-        // [FIXME] 1. Read All Inst; 2. Select each nond
-        String P1InstFile = System.getProperty("P1InstFile");
-        String P2InstFile = System.getProperty("P2InstFile");
-        List<String> P1Insts = CompileUtils.readFrom(P1InstFile);
-        List<String> P2Insts = CompileUtils.readFrom(P2InstFile);
-        Set<String> visitedStmt = new HashSet<>();
-        for (String s : P2Insts) {
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-            if(!s.contains("unary-read")){
-                continue;
-            }
-            String[] rawItems = s.split("\t");
-            String[] items = Arrays.copyOfRange(rawItems, 1, rawItems.length);
-            String minst = items[0];
-            if(visitedStmt.contains(minst)){
-                continue;
-            }
-            visitedStmt.add(minst);
-            //p("%% " + minst);
-            LInst inst = fromDoopSummary(items, false);
-            if(inst == null){
-                continue;
-            }
-            activate(inst);
-        }
-
-        for (String s : P1Insts) {
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-
-            String[] items = s.split("\t");
-            String minst = items[0];
-            if(visitedStmt.contains(minst)){
-                continue;
-            }
-            visitedStmt.add(minst);
-            LInst inst = fromDoopSummary(items, true);
-            if(inst == null){
-                continue;
-            }
-            activate(inst);
-        }
-
-    }
 
     public static void main(String args[]) {
         System.out.println("main!!");
         setupEnv();
-        Analysis.doAnalysis();
+        lplay();
+        // Analysis.doAnalysis();
         // addEntryMethods();
         // addBoundaries();
         // instrument();
