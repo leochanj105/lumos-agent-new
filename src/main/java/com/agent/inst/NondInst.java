@@ -16,6 +16,7 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
 
 public class NondInst extends LInst {
@@ -39,9 +40,9 @@ public class NondInst extends LInst {
         PatchingChain<Unit> units = b.getUnits();
         List<Stmt> followings = new ArrayList<>();
         Stmt actualStmt = getActualStmt(b);
-        if(!(actualStmt instanceof AssignStmt)){
-            System.out.println(actualStmt);
-        }
+        // if(!(actualStmt instanceof AssignStmt)){
+        //     System.out.println(actualStmt);
+        // }
         if(actualStmt == null){
             System.out.println("!! Null stmt " + stmt + "\n" + b);
             return null;
@@ -51,6 +52,9 @@ public class NondInst extends LInst {
         //     units.insertBefore(startStmt, actualStmt);
         //     followings.add(endStmt);
         // }
+        if (CompileUtils.isParamIdentity(actualStmt)) {
+            anchor = CompileUtils.firstStmt(b);
+        } 
         Value baseV = null;
         // if(!base.equals("[NONE]")){
         baseV = CompileUtils.findLocal(b, value);
@@ -60,6 +64,21 @@ public class NondInst extends LInst {
         if (baseV == null) {
             System.out.println("Can't find " + value + " in " + sm);
         } else {
+            boolean needReplace = false;
+            if (!sm.isStatic() && baseV.equals(b.getThisLocal()) && sm.getName().equals("<init>")) {
+                needReplace = true;
+            }
+            if (needReplace) {
+                for (Unit u : units) {
+                    Stmt stmt = (Stmt) u;
+                    if (stmt.containsInvokeExpr() && stmt.getInvokeExpr() instanceof SpecialInvokeExpr) {
+                        SpecialInvokeExpr iexpr = (SpecialInvokeExpr) stmt.getInvokeExpr();
+                        if (iexpr.getBase().equals(baseV) && iexpr.getMethod().getName().equals("<init>")) {
+                            anchor = stmt;
+                        }
+                    }
+                }
+            }
             followings.addAll(CompileUtils.generatePrimitiveLog(b, anchor, baseV, id));
         }
         // }
@@ -67,6 +86,7 @@ public class NondInst extends LInst {
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id + "::start"));
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id + "::end"));
         // }
+
         units.insertAfter(followings, anchor);
         return null;
     }
@@ -74,6 +94,37 @@ public class NondInst extends LInst {
     @Override
     public String getType() {
         return type;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((value == null) ? 0 : value.hashCode());
+        result = prime * result + ((nondType == null) ? 0 : nondType.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        NondInst other = (NondInst) obj;
+        if (value == null) {
+            if (other.value != null)
+                return false;
+        } else if (!value.equals(other.value))
+            return false;
+        if (nondType == null) {
+            if (other.nondType != null)
+                return false;
+        } else if (!nondType.equals(other.nondType))
+            return false;
+        return true;
     }
 
 }
