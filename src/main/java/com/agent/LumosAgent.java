@@ -93,6 +93,10 @@ public class LumosAgent {
             jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
             toolsJarPath = System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar";
         }
+        String comp = System.getProperty("component");
+        if (comp != null && comp.equals("dn")) {
+            component = "dn";
+        }
     }
 
     public static Map<String, Map<String, String>> translationMap;
