@@ -800,7 +800,7 @@ public class LumosAgent {
     }
 
     public static String removeQuotes(String s){
-        return s.substring(1, s.length());
+        return s.substring(1, s.length()-1);
     }
     public static Body getBody(String s){
         return getBody(Scene.v().getMethod(s));
@@ -872,6 +872,9 @@ public class LumosAgent {
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
                 String stmt = translationMap.get(method).get(instId);
+                if (stmt == null) {
+                    p("!!" + methodAndInst);
+                }
                 if (field.equals("")) {
                     // local
                     LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "BOUNDARY");
@@ -926,6 +929,10 @@ public class LumosAgent {
                 continue;
             }
             String stmt = translationMap.get(method).get(instId);
+
+            if (stmt == null) {
+                p("!!" + methodAndInst);
+            }
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
             // p(inst);
             activate(inst);
@@ -952,45 +959,44 @@ public class LumosAgent {
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                continue;
-            }
-            if (!LumosAgent.findMethod(method).hasActiveBody()) {
-                continue;
-            }
             String stmt = translationMap.get(method).get(instId);
+
+            if (stmt == null) {
+                p("!!" + methodAndInst);
+            }
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
             activate(inst);
         }
-        //[FIXME] prevent parameter case
-        String InputInstFile = System.getProperty("InputInst");
-        List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
-        for (String s : InputInsts) {
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
+        if (all) {
+            String InputInstFile = System.getProperty("InputInst");
+            List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
+            for (String s : InputInsts) {
+                // FIXME: lambda currently unresolved
+                if (s.contains("$lambda_")) {
+                    continue;
+                }
 
-            String[] rawItems = s.split("\t");
-            String methodAndInst = rawItems[0];
+                String[] rawItems = s.split("\t");
+                String methodAndInst = rawItems[0];
 
-            if(!all && !inDepthInsts.contains(methodAndInst)){
-                continue;
-            }
-            String v = rawItems[1];
-            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-            String local = v.substring(v.indexOf("/") + 1);
+                if (!all && !inDepthInsts.contains(methodAndInst)) {
+                    continue;
+                }
+                String v = rawItems[1];
+                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+                String local = v.substring(v.indexOf("/") + 1);
 
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                continue;
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
+                if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                    continue;
+                }
+                String stmt = translationMap.get(method).get(instId);
+                LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
+                activate(inst);
             }
-            if (!LumosAgent.findMethod(method).hasActiveBody()) {
-                continue;
-            }
-            String stmt = translationMap.get(method).get(instId);
-            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
-            //activate(inst);
         }
     }
 
@@ -1171,18 +1177,17 @@ public class LumosAgent {
                             }
                         }
 
-                        try {
-                            b.validate();
-                        } catch (Exception e) {
-                            //p(b)
-                            p("!! " + smstr+":");
-                            e.printStackTrace();
-                        }
-                        // if ((smstr.contains("LinkedSetIterator") && smstr.contains("next"))
-                        //         || smstr.contains("chooseUnderReplicated")) {
+                        // if (smstr.contains("getLastBlock")) {
                         //     p("## " + smstr);
                         //     p(b + "");
                         // }
+                        try {
+                            b.validate();
+                        } catch (Exception e) {
+                            p("!! " + smstr+":");
+                            p(b);
+                            e.printStackTrace();
+                        }
                         sm.setActiveBody(b);
                         end = System.nanoTime();
                         // p("Time=" + (end-start)/1e9+"s");

@@ -16,12 +16,14 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.ReturnStmt;
 import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
 
 public class NondInst extends LInst {
     public String value;
     public String nondType;
+
     public NondInst(SootMethod sm, String stmt, int lineNum, String value, String nondType) {
         super(sm, stmt, lineNum, null, nondType);
         this.value = value;
@@ -86,8 +88,12 @@ public class NondInst extends LInst {
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id + "::start"));
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id + "::end"));
         // }
-
-        units.insertAfter(followings, anchor);
+        if(anchor instanceof ReturnStmt){
+            units.insertBefore(followings, anchor);
+        }
+        else{
+            units.insertAfter(followings, anchor);
+        }
         return null;
     }
 
@@ -101,7 +107,6 @@ public class NondInst extends LInst {
         final int prime = 31;
         int result = super.hashCode();
         result = prime * result + ((value == null) ? 0 : value.hashCode());
-        result = prime * result + ((nondType == null) ? 0 : nondType.hashCode());
         return result;
     }
 
@@ -119,12 +124,8 @@ public class NondInst extends LInst {
                 return false;
         } else if (!value.equals(other.value))
             return false;
-        if (nondType == null) {
-            if (other.nondType != null)
-                return false;
-        } else if (!nondType.equals(other.nondType))
-            return false;
         return true;
     }
+
 
 }
