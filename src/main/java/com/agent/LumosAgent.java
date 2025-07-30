@@ -516,13 +516,13 @@ public class LumosAgent {
     public static void p(Object s) {
         p(s+"");
     }
-    public static void setEntryPoint(){
-        List<SootMethod> entryList = new ArrayList<>();
-        SootClass nnClass = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNode");
-        SootMethod nnMain = nnClass.getMethodByName("main");
-        entryList.add(nnMain);
-        Scene.v().setEntryPoints(entryList);
-    }
+    // public static void setEntryPoint(){
+    //     List<SootMethod> entryList = new ArrayList<>();
+    //     SootClass nnClass = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.namenode.NameNode");
+    //     SootMethod nnMain = nnClass.getMethodByName("main");
+    //     entryList.add(nnMain);
+    //     Scene.v().setEntryPoints(entryList);
+    // }
 
     public static void setupClass(String service) {
         p("setting up class...");
@@ -708,6 +708,24 @@ public class LumosAgent {
         else if(component.equals("dn")){
             SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.BPOfferService");
             entryMethods.add(ecls.getMethodByName("processCommandFromActive"));
+            SootClass recvCls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.DataXceiver");
+            for (SootMethod sm : recvCls.getMethods()) {
+                String mname = sm.getName();
+                if (mname.equals("readBlock") ||
+                        mname.equals("writeBlock") ||
+                        mname.equals("replaceBlock") ||
+                        mname.equals("copyBlock") ||
+                        mname.equals("blockChecksum") ||
+                        mname.equals("transferBlock") ||
+                        mname.equals("requestShortCircuitFds") ||
+                        mname.equals("releaseShortCircuitFds") ||
+                        mname.equals("requestShortCircuitShm")) {
+                    entryMethods.add(sm);
+                }
+            }
+            entryMethods.add(
+                    Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DirectoryScanner: void reconcile()>"));
+            // [FIXME] add loop entries for the rest two loops
         }
         for (SootMethod sm : entryMethods) {
             entryClasses.add(sm.getDeclaringClass().getName());
@@ -719,8 +737,6 @@ public class LumosAgent {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
             List<Stmt> stmts = CompileUtils.generateStartRecording(b, toggleM.toString());
-           // List<Stmt> stmts = CompileUtils.generateRRtoggle(b, getRRField(), true);
-            //stmts.addAll(CompileUtils.generateCall(b, getRRField(), "void resetCounter()"));
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             if(!toggleM.toString().contains("sendHeartbeat")){
                 for (Stmt ret : CompileUtils.getReturnStmts(b)) {
@@ -734,7 +750,6 @@ public class LumosAgent {
                     pb.getUnits().insertBefore(stmts, ret);
                 }
                 protoM.setActiveBody(pb);
-                
             }
             toggleM.setActiveBody(b);
             //p(b);
