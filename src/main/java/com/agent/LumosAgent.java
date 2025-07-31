@@ -942,6 +942,10 @@ public class LumosAgent {
                 String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
+
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
                 String stmt = translationMap.get(method).get(instId);
                 if (stmt == null) {
                     p("!!" + methodAndInst);
@@ -1021,7 +1025,7 @@ public class LumosAgent {
             }
 
             String[] rawItems = s.split("\t");
-            String nondType = rawItems[0];
+            // String nondType = rawItems[0];
             String methodAndInst = rawItems[1];
 
             if(!all && !inDepthInsts.contains(methodAndInst)){
@@ -1032,12 +1036,22 @@ public class LumosAgent {
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
-            String stmt = translationMap.get(method).get(instId);
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+
+            Map<String, String> mm = translationMap.get(method);
+            if(mm == null){
+                p(method);
+                continue;
+            }
+            
+            String stmt = mm.get(instId);
 
             if (stmt == null) {
                 p("!!" + methodAndInst);
             }
-            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTENT");
             activate(inst);
         }
         if (all) {
