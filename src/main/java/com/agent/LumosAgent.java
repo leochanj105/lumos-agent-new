@@ -745,6 +745,7 @@ public class LumosAgent {
                     stmts = CompileUtils.generateEndRecording();
                     pb.getUnits().insertBefore(stmts, ret);
                 }
+                p("%%"+pb);
                 protoM.setActiveBody(pb);
             }
             toggleM.setActiveBody(b);
@@ -1264,7 +1265,7 @@ public class LumosAgent {
                             }
                         }
 
-                        // if (smstr.contains("ReplicaInfo add(")) {
+                        // if (smstr.contains("convert")) {
                         //     p("## " + smstr);
                         //     p(b + "");
                         // }
