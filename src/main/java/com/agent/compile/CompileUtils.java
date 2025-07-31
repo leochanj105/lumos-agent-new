@@ -196,7 +196,7 @@ public class CompileUtils {
         insts.add(assign(bLocal, invoke(getm)));
         return insts;
     }
-    public static List<Stmt> generateStartRecording(Body body, String recName){
+    public static List<Stmt> generateStartRecording(String recName){
         List<Stmt> insts = new ArrayList<>();
         // Local bLocal = getLocal(body, "bLocal", IntType.v());
         // Value v = IntConstant.v(1);
@@ -210,7 +210,7 @@ public class CompileUtils {
         return insts;
     }
 
-    public static List<Stmt> generateEndRecording(Body body){
+    public static List<Stmt> generateEndRecording(){
         List<Stmt> insts = new ArrayList<>();
         SootMethod togglem = getMethod("com.lumos.tracer.LumosTracer", "void endRecording()");
         insts.add(call(invoke(togglem)));
@@ -919,7 +919,6 @@ public class CompileUtils {
     }
 
     public static void outputJimple(SootClass cl, String analysisPath) {
-
         System.out.println("compiling " + cl);
 
         File outputDir = new File(analysisPath);

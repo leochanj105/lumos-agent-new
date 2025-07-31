@@ -46,8 +46,23 @@ public class NondInst extends LInst {
         //     System.out.println(actualStmt);
         // }
         if(actualStmt == null){
-            System.out.println("!! Null stmt " + stmt + "\n" + b);
-            return null;
+            // super hack!
+            String hacked = stmt;
+            if(stmt.contains("m.")){
+                hacked = stmt.replace("m.", "$r0.");
+            }
+            else if(stmt.contains("s.")){
+                hacked = stmt.replace("s.","$r0.");
+            }
+            else if(stmt.contains("map.")){
+                hacked = stmt.replace("map.","$r0.");
+            }
+            Stmt hackStmt = CompileUtils.searchStmt(b, hacked, -1);
+            if (hackStmt == null) {
+                System.out.println("!! Null stmt " + stmt + "\n" + b);
+                return null;
+            }
+            actualStmt = hackStmt;
         }
         Stmt anchor = actualStmt;
         // if (LumosAgent.TimeOn) {

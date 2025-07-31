@@ -706,8 +706,8 @@ public class LumosAgent {
             }
         }
         else if(component.equals("dn")){
-            SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.BPOfferService");
-            entryMethods.add(ecls.getMethodByName("processCommandFromActive"));
+            // SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.BPOfferService");
+            // entryMethods.add(ecls.getMethodByName("processCommandFromActive"));
             SootClass recvCls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.DataXceiver");
             for (SootMethod sm : recvCls.getMethods()) {
                 String mname = sm.getName();
@@ -725,10 +725,6 @@ public class LumosAgent {
             }
             entryMethods.add(
                     Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DirectoryScanner: void reconcile()>"));
-            // [FIXME] add loop entries for the rest two loops
-        }
-        for (SootMethod sm : entryMethods) {
-            entryClasses.add(sm.getDeclaringClass().getName());
         }
 
         SootMethod protoM = Scene.v().getMethod(
@@ -736,25 +732,81 @@ public class LumosAgent {
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
-            List<Stmt> stmts = CompileUtils.generateStartRecording(b, toggleM.toString());
+            List<Stmt> stmts = CompileUtils.generateStartRecording(toggleM.toString());
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
-            if(!toggleM.toString().contains("sendHeartbeat")){
+            if(component.equals("dn") || !toggleM.toString().contains("sendHeartbeat")){
                 for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                    stmts = CompileUtils.generateEndRecording(b);
+                    stmts = CompileUtils.generateEndRecording();
                     b.getUnits().insertBefore(stmts, ret);
                 }
             } else {
                 Body pb = getBody(protoM);
                 for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
-                    stmts = CompileUtils.generateEndRecording(pb);
+                    stmts = CompileUtils.generateEndRecording();
                     pb.getUnits().insertBefore(stmts, ret);
                 }
                 protoM.setActiveBody(pb);
             }
             toggleM.setActiveBody(b);
-            //p(b);
         }
-        entryMethods.add(protoM);
+        if(component.equals("nn")){
+            entryMethods.add(protoM);
+        }
+        else{
+            SootMethod beginM1 = Scene.v()
+                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: org.apache.hadoop.hdfs.server.protocol.HeartbeatResponse sendHeartBeat()>");
+            Body b = beginM1.getActiveBody();
+            CompileUtils.insertAt(b.getUnits(), CompileUtils.generateStartRecording("offerService"),
+                    CompileUtils.firstStmt(b), false);
+            beginM1.setActiveBody(b);
+
+            SootMethod endM1 = Scene.v()
+                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void processQueueMessages()>");
+            b = endM1.getActiveBody();
+            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
+                        ret, true);
+            }
+            endM1.setActiveBody(b);
+
+            SootMethod beginM2 = Scene.v()
+                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: org.apache.hadoop.hdfs.protocol.ExtendedBlock popNextSuspectBlock()>");
+            b = beginM2.getActiveBody();
+            CompileUtils.insertAt(b.getUnits(), CompileUtils.generateStartRecording("VolumeScanner"),
+                    CompileUtils.firstStmt(b), false);
+            beginM2.setActiveBody(b);
+
+            SootMethod endM2 = Scene.v()
+                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: long runLoop(org.apache.hadoop.hdfs.protocol.ExtendedBlock)>");
+            b = endM2.getActiveBody();
+            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+                CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
+                        ret, true);
+            }
+            endM2.setActiveBody(b);
+            entryMethods.add(beginM1);
+            entryMethods.add(endM1);
+            entryMethods.add(beginM2);
+            entryMethods.add(endM2);
+            // SootMethod sm2 = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: void run()>");
+            // Body b2 = sm2.getActiveBody();
+            // Stmt start2 = CompileUtils.searchStmt(b2, "l4 = this", -1);
+            // CompileUtils.insertAt(b2.getUnits(), CompileUtils.generateStartRecording(sm2.getName()),
+            //         start2, false);
+            // Stmt end2 = CompileUtils.searchStmt(b2,
+            //         "iter = specialinvoke this.<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: long runLoop(org.apache.hadoop.hdfs.protocol.ExtendedBlock)>(suspectBlock)",
+            //         -1);
+            // CompileUtils.insertAt(b2.getUnits(), CompileUtils.generateEndRecording(),
+            //         end2, false);
+            // sm2.setActiveBody(b2);
+
+            // p(sm1.getActiveBody());
+            // p(sm2.getActiveBody());
+        }
+
+        for (SootMethod sm : entryMethods) {
+            entryClasses.add(sm.getDeclaringClass().getName());
+        }
     }
 
     public static void addAsBoundary(String sc){
@@ -953,7 +1005,9 @@ public class LumosAgent {
                 p("!!" + methodAndInst);
             }
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
-            // p(inst);
+            // if(nondType.contains("WRITE")){
+            //     p(inst);
+            // }
             activate(inst);
         }
 
@@ -1196,7 +1250,7 @@ public class LumosAgent {
                             }
                         }
 
-                        // if (smstr.contains("getLastBlock")) {
+                        // if (smstr.contains("ReplicaInfo add(")) {
                         //     p("## " + smstr);
                         //     p(b + "");
                         // }
@@ -1410,7 +1464,12 @@ public class LumosAgent {
     public static void main(String args[]) {
         System.out.println("main!!");
         setupEnv();
-        lplay();
+
+        SootMethod sm2 = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void offerService()>");
+        p(sm2.getActiveBody());
+        SootMethod sm1 = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: void run()>");
+        p(sm1.getActiveBody());
+        // lplay();
         // Analysis.doAnalysis();
         // addEntryMethods();
         // addBoundaries();
