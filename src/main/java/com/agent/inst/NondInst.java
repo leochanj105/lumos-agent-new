@@ -3,7 +3,7 @@ package com.agent.inst;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.agent.LumosAgent;
 import com.agent.compile.CompileUtils;
@@ -23,11 +23,17 @@ import soot.jimple.Stmt;
 public class NondInst extends LInst {
     public String value;
     public String nondType;
+    public static AtomicLong currId = new AtomicLong(0);
+    public long lid;
 
     public NondInst(SootMethod sm, String stmt, int lineNum, String value, String nondType) {
         super(sm, stmt, lineNum, null, nondType);
         this.value = value;
-        this.id = sm + "::" + stmt + "::" + value + "::" + nondType;
+        if(LumosAgent.verbose.equals("debug")){
+            this.id = sm + "::" + stmt + "::" + value + "::" + nondType;
+        }else{
+            lid = currId.addAndGet(1);
+        }
     }
 
     @Override
@@ -96,7 +102,12 @@ public class NondInst extends LInst {
                     }
                 }
             }
-            followings.addAll(CompileUtils.generatePrimitiveLog(b, anchor, baseV, id));
+            if(LumosAgent.verbose.equals("debug")){
+                followings.addAll(CompileUtils.generateLog(b, anchor, baseV, id));
+            }
+            else{
+                followings.addAll(CompileUtils.generateLog(b, anchor, baseV, lid));
+            }
         }
         // }
         // if (LumosAgent.TimeOn) {

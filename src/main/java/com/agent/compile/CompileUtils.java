@@ -57,6 +57,7 @@ import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.Jimple;
 import soot.jimple.JimpleBody;
+import soot.jimple.LongConstant;
 import soot.jimple.NullConstant;
 import soot.jimple.Stmt;
 import soot.jimple.StringConstant;
@@ -431,25 +432,42 @@ public class CompileUtils {
         return generateValueLog(body, stmt, v, logger, tag, null, null, null);
     }
 
-    public static List<Stmt> generatePrimitiveLog(Body body, Stmt stmt, Value v, String tag) {
+    public static SootMethod getLogMethod(Value v){
+
         Type t = v.getType();
         SootMethod logMethod = null;
-        // Value toRec = null;
         if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
             String lmStr = "";
-            lmStr = "void logTrace";
-            logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+            if(LumosAgent.verbose.equals("debug")){
+                lmStr = "void logTrace";
+            }
+            else{
+                lmStr = "void logTraceAndId";
+            }
+            logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
         } else {
-            logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
+            if (LumosAgent.verbose.equals("debug")) {
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
+            } else {
+                logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddressAndId");
+            }
         }
+        return logMethod;
+    }
+
+    public static List<Stmt> generateLog(Body body, Stmt stmt, Value v, String tag) {
         StringConstant tagVal = StringConstant.v(tag);
         Stmt invokeStmt = null;
-        String logNone = System.getProperty("LogNone");
-        if (logNone != null && logNone.equals("true")) {
-            invokeStmt = call(invoke(Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logNone")));
-        } else {
-            invokeStmt = call(invoke(logMethod, v, tagVal));
-        }
+        invokeStmt = call(invoke(getLogMethod(v), v, tagVal));
+        List<Stmt> stlist = new ArrayList<>();
+        stlist.add(invokeStmt);
+        return stlist;
+    }
+
+    public static List<Stmt> generateLog(Body body, Stmt stmt, Value v, long id) {
+        LongConstant tagVal = LongConstant.v(id);
+        Stmt invokeStmt = null;
+        invokeStmt = call(invoke(getLogMethod(v), v, tagVal));
         List<Stmt> stlist = new ArrayList<>();
         stlist.add(invokeStmt);
         return stlist;
@@ -472,7 +490,7 @@ public class CompileUtils {
                 } else if (logger.equals("log4j")) {
                     lmStr = "void logTrace";
                 }
-                logMethod = getLogMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+                logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
             } else {
                 logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");
             }
@@ -856,7 +874,7 @@ public class CompileUtils {
         return null;
     }
 
-    private static SootMethod getLogMethod(String cls, String mpref,String suffix, Value value) {
+    private static SootMethod getLogPrimitiveMethod(String cls, String mpref,String suffix, Value value) {
         SootMethod toCall;
         String tstr = value.getType().toString();
         if (tstr.equals("int") || tstr.equals("short") || tstr.equals("byte")) {

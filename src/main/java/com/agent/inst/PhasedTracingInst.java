@@ -69,7 +69,7 @@ public class PhasedTracingInst extends LInst {
             if (baseV == null) {
                 System.out.println("Can't find " + base + " in " + sm);
             } else {
-                followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, baseV, id + "::base"));
+                followings.addAll(CompileUtils.generateLog(b, endStmt, baseV, id + "::base"));
             }
         }
         if (!witness.equals("[NONE]") || (!isP1)) {
@@ -92,12 +92,12 @@ public class PhasedTracingInst extends LInst {
             if (witnessV == null) {
                 System.out.println("Can't find " + witness + " in " + sm);
             } else {
-                followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, witnessV, id + "::witness"));
+                followings.addAll(CompileUtils.generateLog(b, endStmt, witnessV, id + "::witness"));
             }
         }
         if (LumosAgent.TimeOn) {
-            followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id + "::start"));
-            followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id + "::end"));
+            followings.addAll(CompileUtils.generateLog(b, endStmt, startLocal, id + "::start"));
+            followings.addAll(CompileUtils.generateLog(b, endStmt, endLocal, id + "::end"));
         }
         units.insertAfter(followings, anchor);
         return null;

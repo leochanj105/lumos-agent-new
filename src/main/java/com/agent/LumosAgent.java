@@ -83,6 +83,7 @@ public class LumosAgent {
     // public static String jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
     public static String jrePath;
     public static String toolsJarPath;
+    public static String verbose;
     static{
         String isDev = System.getProperty("Dev");
         if(isDev != null){
@@ -96,6 +97,12 @@ public class LumosAgent {
         String comp = System.getProperty("component");
         if (comp != null && comp.equals("dn")) {
             component = "dn";
+        }
+        String vb = System.getProperty("verbose");
+        if (vb != null && vb.contains("debug")) {
+            verbose = "debug";
+        } else {
+            verbose = "performance";
         }
     }
 
@@ -248,7 +255,7 @@ public class LumosAgent {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
+        // inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
         // if(inst !=null)
         //     return;
         // inst.appendToBootstrapClassLoaderSearch(toolsJarFile);
@@ -660,7 +667,6 @@ public class LumosAgent {
                 entryMethods.add(sm);
             }
             if (specialName.equals("any")) {
-                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.BlockManager$ReplicationMonitor: void run()>"));
 
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
@@ -671,20 +677,14 @@ public class LumosAgent {
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
                         .getMethodByName("rescanPostponedMisreplicatedBlocks"));
-                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$LazyPersistFileScrubber: void run()>"));
 
                 entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$LazyPersistFileScrubber: void clearCorruptLazyPersistFiles()>"));
-                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.FSNamesystem$NameNodeResourceMonitor: void run()>"));
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem")
                         .getMethodByName("checkAvailableResources"));
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem")
                         .getMethodByName("nameNodeHasResourcesAvailable"));
-                // entryMethods.add(Scene.v().getSootClass(
-                //         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").getMethodByName("enterSafeMode"));
-                // entryMethods.add(Scene.v().getSootClass(
-                //         "org.apache.hadoop.hdfs.server.namenode.FSNamesystem").getMethodByName("isInSafeMode"));
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.blockmanagement.PendingReplicationBlocks$PendingReplicationMonitor")
                         .getMethodByName("pendingReplicationCheck"));
@@ -695,10 +695,7 @@ public class LumosAgent {
                         "org.apache.hadoop.hdfs.server.blockmanagement.HeartbeatManager")
                         .getMethodByName("heartbeatCheck"));
 
-                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor: void run()>"));
-                entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor: void rescan()>"));
-                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.namenode.LeaseManager$Monitor: void run()>"));
-                
+                // entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.blockmanagement.CacheReplicationMonitor: void rescan()>"));
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.namenode.LeaseManager")
                         .getMethodByName("checkLeases"));
@@ -734,24 +731,24 @@ public class LumosAgent {
             Body b = getBody(toggleM);
             List<Stmt> stmts = CompileUtils.generateStartRecording(toggleM.toString());
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
-            if(component.equals("dn") || !toggleM.toString().contains("sendHeartbeat")){
+            // if(component.equals("dn") || !toggleM.toString().contains("sendHeartbeat")){
                 for (Stmt ret : CompileUtils.getReturnStmts(b)) {
                     stmts = CompileUtils.generateEndRecording();
                     b.getUnits().insertBefore(stmts, ret);
                 }
-            } else {
-                Body pb = getBody(protoM);
-                for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
-                    stmts = CompileUtils.generateEndRecording();
-                    pb.getUnits().insertBefore(stmts, ret);
-                }
-                p("%%"+pb);
-                protoM.setActiveBody(pb);
-            }
+            // } else {
+            //     Body pb = getBody(protoM);
+            //     for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
+            //         stmts = CompileUtils.generateEndRecording();
+            //         pb.getUnits().insertBefore(stmts, ret);
+            //     }
+            //     p("%%"+pb);
+            //     protoM.setActiveBody(pb);
+            // }
             toggleM.setActiveBody(b);
         }
         if(component.equals("nn")){
-            entryMethods.add(protoM);
+            // entryMethods.add(protoM);
         }
         else{
             SootMethod beginM1 = Scene.v()
@@ -1217,6 +1214,13 @@ public class LumosAgent {
 
     public static void activate(LInst inst) {
         if (allInsts.contains(inst)) {
+            return;
+        }
+        String v = ((NondInst)inst).value;
+        if(v.contains("$") && v.contains("constant")){
+            return;
+        }
+        if(v.contains("$") && v.contains("null")){
             return;
         }
         allInsts.add(inst);
