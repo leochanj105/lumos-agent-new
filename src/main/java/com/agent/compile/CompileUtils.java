@@ -438,13 +438,13 @@ public class CompileUtils {
         SootMethod logMethod = null;
         if (CompileUtils.isPrimitive(t) || !(t instanceof RefLikeType)) {
             String lmStr = "";
-            if(LumosAgent.verbose.equals("debug")){
+            if (LumosAgent.verbose.equals("debug")) {
                 lmStr = "void logTrace";
-            }
-            else{
+                logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
+            } else {
                 lmStr = "void logTraceAndId";
+                logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",long)", v);
             }
-            logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
         } else {
             if (LumosAgent.verbose.equals("debug")) {
                 logMethod = Scene.v().getSootClass(LumosAgent.rrClass).getMethodByName("logAddress");

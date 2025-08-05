@@ -724,26 +724,35 @@ public class LumosAgent {
                     Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DirectoryScanner: void reconcile()>"));
         }
 
-        SootMethod protoM = Scene.v().getMethod(
-                "<org.apache.hadoop.hdfs.protocolPB.PBHelper: org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos$DatanodeCommandProto convert(org.apache.hadoop.hdfs.server.protocol.DatanodeCommand)>");
+        // SootMethod protoM = Scene.v().getMethod(
+        //         "<org.apache.hadoop.hdfs.protocolPB.PBHelper: org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos$DatanodeCommandProto convert(org.apache.hadoop.hdfs.server.protocol.DatanodeCommand)>");
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = getBody(toggleM);
             List<Stmt> stmts = CompileUtils.generateStartRecording(toggleM.toString());
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             // if(component.equals("dn") || !toggleM.toString().contains("sendHeartbeat")){
+            if(component.equals("nn") && toggleM.getDeclaringClass().getName().equals("NameNodeRpcServer")){
+                SootMethod protoM;
+                String name = toggleM.getName();
+                SootClass nnProtoClass = Scene.v()
+                        .getSootClass("org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolServerSideTranslatorPB");
+                protoM = nnProtoClass.getMethodByName(name);
+                Body pb = getBody(protoM);
+                for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
+                    stmts = CompileUtils.generateEndRecording();
+                    pb.getUnits().insertBefore(stmts, ret);
+                }
+                p("%%"+protoM);
+                protoM.setActiveBody(pb);
+            }
+            else{
                 for (Stmt ret : CompileUtils.getReturnStmts(b)) {
                     stmts = CompileUtils.generateEndRecording();
                     b.getUnits().insertBefore(stmts, ret);
                 }
+            }
             // } else {
-            //     Body pb = getBody(protoM);
-            //     for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
-            //         stmts = CompileUtils.generateEndRecording();
-            //         pb.getUnits().insertBefore(stmts, ret);
-            //     }
-            //     p("%%"+pb);
-            //     protoM.setActiveBody(pb);
             // }
             toggleM.setActiveBody(b);
         }
