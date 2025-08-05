@@ -732,18 +732,26 @@ public class LumosAgent {
             List<Stmt> stmts = CompileUtils.generateStartRecording(toggleM.toString());
             CompileUtils.insertAt(b.getUnits(), stmts, CompileUtils.firstStmt(b), true);
             // if(component.equals("dn") || !toggleM.toString().contains("sendHeartbeat")){
-            if(component.equals("nn") && toggleM.getDeclaringClass().getName().equals("NameNodeRpcServer")){
+            if(component.equals("nn") && toggleM.getDeclaringClass().getShortName().equals("NameNodeRpcServer")){
                 SootMethod protoM;
                 String name = toggleM.getName();
                 SootClass nnProtoClass = Scene.v()
                         .getSootClass("org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolServerSideTranslatorPB");
-                protoM = nnProtoClass.getMethodByName(name);
+                protoM = nnProtoClass.getMethodByNameUnsafe(name);
+                if (protoM == null) {
+                    nnProtoClass = Scene.v()
+                            .getSootClass("org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolTranslatorPB");
+                    protoM = nnProtoClass.getMethodByNameUnsafe(name);
+                }
+                if (protoM == null) {
+                    protoM = toggleM;
+                }
                 Body pb = getBody(protoM);
                 for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
                     stmts = CompileUtils.generateEndRecording();
                     pb.getUnits().insertBefore(stmts, ret);
                 }
-                p("%%"+protoM);
+                p("%%" + protoM);
                 protoM.setActiveBody(pb);
             }
             else{
