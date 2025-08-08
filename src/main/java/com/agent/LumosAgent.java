@@ -39,6 +39,7 @@ import soot.SootMethod;
 import soot.Type;
 import soot.Unit;
 import soot.jimple.Stmt;
+import soot.jimple.toolkits.pointer.RWSet;
 import soot.options.Options;
 import tracing.LumosInstrumentation;
 import tracing.TimestampedInstrumentation;
@@ -919,7 +920,10 @@ public class LumosAgent {
             for (String s : inDepthNodes) {
                 String[] rawItems = s.split("\t");
                 String methodAndInst = removeQuotes(rawItems[1]);
-                inDepthInsts.add(methodAndInst);
+                String instComp = removeQuotes(rawItems[5]);
+                if (component.equals(instComp)) {
+                    inDepthInsts.add(methodAndInst);
+                }
             }
 
             Map<String, Set<String>> witnessMap = new HashMap<>();
@@ -931,6 +935,32 @@ public class LumosAgent {
                 String v = rawItems[1];
                 String local = v.substring(v.indexOf("/") + 1);
                 witnessMap.computeIfAbsent(methodAndInst, e -> new HashSet<>()).add(local);
+            }
+
+
+            String cfFile = "/home/jingyuan/neo4j/cypher/InDepthControlVar.csv";
+            List<String> cfinsts = CompileUtils.readFrom(inDepthFile);
+            for (String s : cfinsts) {
+                String[] rawItems = s.split("\t");
+                String methodAndInst = rawItems[0];
+                String v = rawItems[1];
+                String instComp = rawItems[2];
+                if (!component.equals(instComp)) {
+                    continue;
+                }
+
+                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+                String local = v.substring(v.indexOf("/") + 1);
+
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
+                String stmt = translationMap.get(method).get(instId);
+                if (stmt != null) {
+                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTROL");
+                    activate(inst);
+                }
             }
 
             // boundaries
@@ -953,6 +983,10 @@ public class LumosAgent {
                 String base = removeQuotes(rawItems[2]);
                 String field = removeQuotes(rawItems[3]);
 
+                String instComp = removeQuotes(rawItems[4]);
+                if (!component.equals(instComp)) {
+                    continue;
+                }
                 // p(methodAndInst);
                 String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
