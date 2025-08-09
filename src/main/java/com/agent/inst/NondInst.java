@@ -114,8 +114,25 @@ public class NondInst extends LInst {
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal, id + "::start"));
         //     followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id + "::end"));
         // }
-        if(anchor instanceof ReturnStmt){
-            units.insertBefore(followings, anchor);
+        // Stmt firstStmt = null;
+        // if (followings.size() > 0) {
+        //     firstStmt = followings.get(0);
+        // }
+        if(type.equals("CONTROL")){
+            // units.insertBeforeNoRedirect(followings, anchor);
+            CompileUtils.insertBeforeRedirect(units, followings, anchor);
+            // units.insertBefore(actualStmt, anchor);
+            // CompileUtils.insertAt(units, followings, anchor, true);
+            // if(value.contains("childrenList")){
+            //     LumosAgent.p("@@ " + followings);
+            //     LumosAgent.p(anchor);
+            //     units.insertBefore(followings, anchor);
+            //     LumosAgent.p(b);
+            // }
+        }
+        else if(anchor instanceof ReturnStmt){
+            CompileUtils.insertBeforeRedirect(units, followings, anchor);
+            // units.insertBefore(followings, anchor);
         }
         else{
             units.insertAfter(followings, anchor);

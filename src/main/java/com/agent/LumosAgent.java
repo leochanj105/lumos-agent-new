@@ -939,7 +939,7 @@ public class LumosAgent {
 
 
             String cfFile = "/home/jingyuan/neo4j/cypher/InDepthControlVar.csv";
-            List<String> cfinsts = CompileUtils.readFrom(inDepthFile);
+            List<String> cfinsts = CompileUtils.readFrom(cfFile);
             for (String s : cfinsts) {
                 String[] rawItems = s.split("\t");
                 String methodAndInst = rawItems[0];
@@ -950,6 +950,9 @@ public class LumosAgent {
                 }
 
                 String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                if(method.contains("http.")){
+                    continue;
+                }
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
 

@@ -151,6 +151,17 @@ public class CompileUtils {
         }
     }
 
+    public static void insertBeforeRedirect(PatchingChain<Unit> units, List<Stmt> toinsert, Stmt target) {
+        List<Unit> insUnits = new ArrayList<>(toinsert);
+        insUnits.forEach(unit -> {
+            units.insertBeforeNoRedirect(unit, target);
+        });
+        if (insUnits.size() > 0) {
+            Unit firstUnit = insUnits.get(0);
+            target.redirectJumpsToThisTo(firstUnit);
+        }
+    }
+
     public static SootMethod getMethod(String className, String methodName) {
         return Scene.v()
                 .getSootClass(className)
