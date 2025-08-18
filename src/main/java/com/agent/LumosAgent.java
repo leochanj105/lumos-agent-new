@@ -667,8 +667,7 @@ public class LumosAgent {
                 }
                 entryMethods.add(sm);
             }
-            if (specialName.equals("any")) {
-
+            if (specialName == null ||  specialName.equals("any")) {
                 entryMethods.add(Scene.v().getSootClass(
                         "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager")
                         .getMethodByName("computeDatanodeWork"));
@@ -886,9 +885,6 @@ public class LumosAgent {
             return sm.getActiveBody();
     }
 
-    public static String removeQuotes(String s){
-        return s.substring(1, s.length()-1);
-    }
     public static Body getBody(String s){
         return getBody(Scene.v().getMethod(s));
     }
@@ -898,7 +894,7 @@ public class LumosAgent {
         addEntryMethods();
         addCallerBaggage();
         // addBoundaries();
-        loadInstrumentation();
+        InstLoader.loadInstrumentation();
         p("----Analysis Done------");
         analyzeReady = true;
         // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
@@ -954,239 +950,6 @@ public class LumosAgent {
 
     }
 
-    // Load all possible instrumentation
-    // Local/snapshot
-    // For each selected RNode/WNode for inDepth and boundary, match all
-    // instrumentations
-    public static void loadInstrumentation() {
-        String allStr = System.getProperty("AllInst");
-        boolean all = allStr != null && allStr.equals("true");
-        Set<String> inDepthInsts = new HashSet<>();
-        if (!all) {
-            String inDepthFile = "/home/jingyuan/neo4j/cypher/indepth.csv";
-            List<String> inDepthNodes = CompileUtils.readFrom(inDepthFile);
-            inDepthNodes.remove(0);
-            for (String s : inDepthNodes) {
-                String[] rawItems = s.split("\t");
-                String methodAndInst = removeQuotes(rawItems[1]);
-                String instComp = removeQuotes(rawItems[5]);
-                if (component.equals(instComp)) {
-                    inDepthInsts.add(methodAndInst);
-                }
-            }
-
-            Map<String, Set<String>> witnessMap = new HashMap<>();
-            String WitnessFile = System.getProperty("Witness");
-            List<String> Witnesses = CompileUtils.readFrom(WitnessFile);
-            for (String s : Witnesses) {
-                String[] rawItems = s.split("\t");
-                String methodAndInst = rawItems[0];
-                String v = rawItems[1];
-                String local = v.substring(v.indexOf("/") + 1);
-                witnessMap.computeIfAbsent(methodAndInst, e -> new HashSet<>()).add(local);
-            }
-
-
-            String cfFile = "/home/jingyuan/neo4j/cypher/InDepthControlVar.csv";
-            List<String> cfinsts = CompileUtils.readFrom(cfFile);
-            for (String s : cfinsts) {
-                String[] rawItems = s.split("\t");
-                String methodAndInst = rawItems[0];
-                String v = rawItems[1];
-                String instComp = rawItems[2];
-                if (!component.equals(instComp)) {
-                    continue;
-                }
-
-                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-                if(method.contains("http.")){
-                    continue;
-                }
-                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-                String local = v.substring(v.indexOf("/") + 1);
-
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                    continue;
-                }
-                String stmt = translationMap.get(method).get(instId);
-                if (stmt != null) {
-                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTROL");
-                    activate(inst);
-                }
-            }
-
-            // boundaries
-            // Locals: just log it
-            // Normal fields: just log the left hand of assign
-            // [*]: log snapshot of base
-            // [CONTENTS]: normal reads and copy-like reads;
-            // [FIXME] copy-like: just snapshot; need to mark if this is a copy-like
-            // function
-            // [FIXME] hashcode
-            // a = s.get()/ s.set(a): just log witness; need to specify collection calls and
-            // witnesses
-            //
-            List<String> boundaryNodes = CompileUtils.readFrom("/home/jingyuan/neo4j/cypher/boundary.csv");
-            boundaryNodes.remove(0);
-            for (String s : boundaryNodes) {
-                String[] rawItems = s.split("\t");
-                String methodAndInst = removeQuotes(rawItems[0]);
-                String v = removeQuotes(rawItems[1]);
-                String base = removeQuotes(rawItems[2]);
-                String field = removeQuotes(rawItems[3]);
-
-                String instComp = removeQuotes(rawItems[4]);
-                if (!component.equals(instComp)) {
-                    continue;
-                }
-                // p(methodAndInst);
-                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-                String local = v.substring(v.indexOf("/") + 1);
-
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                    continue;
-                }
-                String stmt = translationMap.get(method).get(instId);
-                if (stmt == null) {
-                    p("!!" + methodAndInst);
-                }
-                if (field.equals("")) {
-                    // local
-                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "BOUNDARY");
-                    activate(inst);
-                }
-                // else if(!field.contains("[")){
-                // // normal field
-
-                // }
-                else if (field.contains("*")) {
-                    // snapshot
-                    String baseLocal = base.substring(base.indexOf("/") + 1);
-                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, baseLocal, "SNAPSHOT");
-                    activate(inst);
-                } else {
-                    // collections or normal fields
-                    if(witnessMap.containsKey(methodAndInst)){
-                        for (String w : witnessMap.get(methodAndInst)) {
-                            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, w, "WITNESS");
-                            activate(inst);
-                        }
-                    }
-                }
-            }
-        }
-
-        String ConcurrencyInstFile = System.getProperty("ConcurrencyInst");
-        List<String> ConcurrencyInsts = CompileUtils.readFrom(ConcurrencyInstFile);
-        for (String s : ConcurrencyInsts) {
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-
-            String[] rawItems = s.split("\t");
-            String methodAndInst = rawItems[0];
-
-            if(!all && !inDepthInsts.contains(methodAndInst)){
-                continue;
-            }
-            String v = rawItems[1];
-            String nondType = rawItems[2];
-
-            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-            String local = v.substring(v.indexOf("/") + 1);
-
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                continue;
-            }
-            if (!LumosAgent.findMethod(method).hasActiveBody()) {
-                continue;
-            }
-            String stmt = translationMap.get(method).get(instId);
-
-            if (stmt == null) {
-                p("!!" + methodAndInst);
-            }
-            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
-            // if(nondType.contains("WRITE")){
-            //     p(inst);
-            // }
-            activate(inst);
-        }
-
-
-        String ContentInstFile = System.getProperty("ContentInst");
-        List<String> ContentInsts = CompileUtils.readFrom(ContentInstFile);
-        for (String s : ContentInsts) {
-            // FIXME: lambda currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-
-            String[] rawItems = s.split("\t");
-            // String nondType = rawItems[0];
-            String methodAndInst = rawItems[1];
-
-            if(!all && !inDepthInsts.contains(methodAndInst)){
-                continue;
-            }
-            String v = rawItems[2];
-            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-            String local = v.substring(v.indexOf("/") + 1);
-
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                continue;
-            }
-
-            Map<String, String> mm = translationMap.get(method);
-            if(mm == null){
-                p(method);
-                continue;
-            }
-            
-            String stmt = mm.get(instId);
-
-            if (stmt == null) {
-                p("!!" + methodAndInst);
-            }
-            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTENT");
-            activate(inst);
-        }
-        if (all) {
-            String InputInstFile = System.getProperty("InputInst");
-            List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
-            for (String s : InputInsts) {
-                // FIXME: lambda currently unresolved
-                if (s.contains("$lambda_")) {
-                    continue;
-                }
-
-                String[] rawItems = s.split("\t");
-                String methodAndInst = rawItems[0];
-
-                if (!all && !inDepthInsts.contains(methodAndInst)) {
-                    continue;
-                }
-                String v = rawItems[1];
-                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-                String local = v.substring(v.indexOf("/") + 1);
-
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
-                    continue;
-                }
-                if (!LumosAgent.findMethod(method).hasActiveBody()) {
-                    continue;
-                }
-                String stmt = translationMap.get(method).get(instId);
-                LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
-                activate(inst);
-            }
-        }
-    }
 
     //public static void readInstsDoop() {
     //    p("reading inst files...");

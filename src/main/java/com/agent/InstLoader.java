@@ -1,0 +1,260 @@
+package com.agent;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.agent.compile.CompileUtils;
+import com.agent.inst.LInst;
+import com.agent.inst.NondInst;
+
+public class InstLoader{
+
+    public static String queryResPath = System.getenv("QUERY_RES_PATH");
+    public static String nondFactPath = System.getenv("NONDFACT_PATH");
+
+    public static String removeQuotes(String s){
+        return s.substring(1, s.length()-1);
+    }
+    // Load all possible instrumentation
+    // Local/snapshot
+    // For each selected RNode/WNode for inDepth and boundary, match all
+    // instrumentations
+    public static void loadInstrumentation() {
+        String allStr = System.getProperty("AllInst");
+        boolean all = allStr != null && allStr.equals("true");
+        Set<String> inDepthInsts = new HashSet<>();
+        if (!all) {
+            String inDepthFile = queryResPath+"/indepth.csv";
+            List<String> inDepthNodes = CompileUtils.readFrom(inDepthFile);
+            inDepthNodes.remove(0);
+            for (String s : inDepthNodes) {
+                String[] rawItems = s.split("\t");
+                String methodAndInst = removeQuotes(rawItems[1]);
+                String instComp = removeQuotes(rawItems[5]);
+                if (LumosAgent.component.equals(instComp)) {
+                    inDepthInsts.add(methodAndInst);
+                }
+            }
+
+            Map<String, Set<String>> witnessMap = new HashMap<>();
+            String witnessFile = System.getenv("WITNESS");
+                //System.getProperty("Witness");
+            List<String> Witnesses = CompileUtils.readFrom(witnessFile);
+            for (String s : Witnesses) {
+                String[] rawItems = s.split("\t");
+                String methodAndInst = rawItems[0];
+                String v = rawItems[1];
+                String local = v.substring(v.indexOf("/") + 1);
+                witnessMap.computeIfAbsent(methodAndInst, e -> new HashSet<>()).add(local);
+            }
+
+
+            String cfFile = queryResPath+"/InDepthControlVar.csv";
+            List<String> cfinsts = CompileUtils.readFrom(cfFile);
+            for (String s : cfinsts) {
+                String[] rawItems = s.split("\t");
+                String methodAndInst = rawItems[0];
+                String v = rawItems[1];
+                String instComp = rawItems[2];
+                if (!LumosAgent.component.equals(instComp)) {
+                    continue;
+                }
+
+                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                if(method.contains("http.")){
+                    continue;
+                }
+                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+                String local = v.substring(v.indexOf("/") + 1);
+
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
+                String stmt = LumosAgent.translationMap.get(method).get(instId);
+                if (stmt != null) {
+                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTROL");
+                    LumosAgent.activate(inst);
+                }
+            }
+
+            // boundaries
+            // Locals: just log it
+            // Normal fields: just log the left hand of assign
+            // [*]: log snapshot of base
+            // [CONTENTS]: normal reads and copy-like reads;
+            // [FIXME] copy-like: just snapshot; need to mark if this is a copy-like
+            // function
+            // [FIXME] hashcode
+            // a = s.get()/ s.set(a): just log witness; need to specify collection calls and
+            // witnesses
+            //
+            List<String> boundaryNodes = CompileUtils.readFrom(queryResPath+"/boundary.csv");
+            boundaryNodes.remove(0);
+            for (String s : boundaryNodes) {
+                String[] rawItems = s.split("\t");
+                String methodAndInst = removeQuotes(rawItems[0]);
+                String v = removeQuotes(rawItems[1]);
+                String base = removeQuotes(rawItems[2]);
+                String field = removeQuotes(rawItems[3]);
+
+                String instComp = removeQuotes(rawItems[4]);
+                if (!LumosAgent.component.equals(instComp)) {
+                    continue;
+                }
+                // p(methodAndInst);
+                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+                String local = v.substring(v.indexOf("/") + 1);
+
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
+                String stmt = LumosAgent.translationMap.get(method).get(instId);
+                if (stmt == null) {
+                    p("!!" + methodAndInst);
+                }
+                if (field.equals("")) {
+                    // local
+                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "BOUNDARY");
+                    LumosAgent.activate(inst);
+                }
+                // else if(!field.contains("[")){
+                // // normal field
+
+                // }
+                else if (field.contains("*")) {
+                    // snapshot
+                    String baseLocal = base.substring(base.indexOf("/") + 1);
+                    LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, baseLocal, "SNAPSHOT");
+                    LumosAgent.activate(inst);
+                } else {
+                    // collections or normal fields
+                    if(witnessMap.containsKey(methodAndInst)){
+                        for (String w : witnessMap.get(methodAndInst)) {
+                            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, w, "WITNESS");
+                            LumosAgent.activate(inst);
+                        }
+                    }
+                }
+            }
+        }
+
+        String ConcurrencyInstFile = System.getenv("CONCURRENCY_NOND");
+        List<String> ConcurrencyInsts = CompileUtils.readFrom(ConcurrencyInstFile);
+        for (String s : ConcurrencyInsts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] rawItems = s.split("\t");
+            String methodAndInst = rawItems[0];
+
+            if(!all && !inDepthInsts.contains(methodAndInst)){
+                continue;
+            }
+            String v = rawItems[1];
+            String nondType = rawItems[2];
+
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                continue;
+            }
+            String stmt = LumosAgent.translationMap.get(method).get(instId);
+
+            if (stmt == null) {
+                p("!!" + methodAndInst);
+            }
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
+            LumosAgent.activate(inst);
+        }
+
+
+        String ContentInstFile = System.getenv("CONTENT_NOND");
+            //System.getProperty("ContentInst");
+        List<String> ContentInsts = CompileUtils.readFrom(ContentInstFile);
+        for (String s : ContentInsts) {
+            // FIXME: lambda currently unresolved
+            if(s.contains("$lambda_")){
+                continue;
+            }
+
+            String[] rawItems = s.split("\t");
+            // String nondType = rawItems[0];
+            String methodAndInst = rawItems[1];
+
+            if(!all && !inDepthInsts.contains(methodAndInst)){
+                continue;
+            }
+            String v = rawItems[2];
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                continue;
+            }
+
+            Map<String, String> mm = LumosAgent.translationMap.get(method);
+            if(mm == null){
+                p(method);
+                continue;
+            }
+            String stmt = mm.get(instId);
+
+            if (stmt == null) {
+                p("!!" + methodAndInst);
+            }
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTENT");
+            LumosAgent.activate(inst);
+        }
+        if (all) {
+            String InputInstFile =System.getenv("INPUT_NOND");
+            List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
+            for (String s : InputInsts) {
+                // FIXME: lambda currently unresolved
+                if (s.contains("$lambda_")) {
+                    continue;
+                }
+
+                String[] rawItems = s.split("\t");
+                String methodAndInst = rawItems[0];
+
+                if (!all && !inDepthInsts.contains(methodAndInst)) {
+                    continue;
+                }
+                String v = rawItems[1];
+                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+                String local = v.substring(v.indexOf("/") + 1);
+
+                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                    continue;
+                }
+                if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                    continue;
+                }
+                String stmt = LumosAgent.translationMap.get(method).get(instId);
+                LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
+                LumosAgent.activate(inst);
+            }
+        }
+    }
+
+    public static void p(String s) {
+        System.out.println(s);
+    }
+
+    public static void p(Object s) {
+        p(s+"");
+    }
+}
