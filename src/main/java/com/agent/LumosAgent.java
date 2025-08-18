@@ -896,7 +896,7 @@ public class LumosAgent {
     public static void lplay() {
 
         addEntryMethods();
-
+        addCallerBaggage();
         // addBoundaries();
         loadInstrumentation();
         p("----Analysis Done------");
@@ -904,7 +904,56 @@ public class LumosAgent {
         // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
         // readInstsDoop();
     }
-    
+
+    public static void addCallerBaggage(){
+        if (component.equals("dn")) {
+            p("adding baggage...");
+            SootClass sc = Scene.v()
+                    .getSootClass("org.apache.hadoop.hdfs.protocolPB.DatanodeProtocolClientSideTranslatorPB");
+            Set<SootMethod> callers = new HashSet<>();
+            for (SootMethod sm : sc.getMethods()) {
+                String name = sm.getName();
+                if (name.contains("sendHeartbeat") ||
+                        name.contains("registerDatanode") ||
+
+                        name.contains("blockReport") ||
+                        name.contains("cacheReport") ||
+                        name.contains("blockReceivedAndDeleted") ||
+                        name.contains("errorReport") ||
+                        name.contains("versionRequest") ||
+                        name.contains("reportBadBlocks") ||
+                        name.contains("commitBlockSynchronization")) {
+                    p("adding to caller: " + sm);
+                    callers.add(sm);
+                }
+            }
+            sc = Scene.v().getSootClass("org.apache.hadoop.hdfs.protocol.datatransfer.Sender");
+            for (SootMethod sm : sc.getMethods()) {
+                String name = sm.getName();
+                if (name.contains("readBlock") ||
+                        name.contains("writeBlock") ||
+                        name.contains("transferBlock") ||
+                        name.contains("requestShortCircuitFds") ||
+                        name.contains("releaseShortCircuitFds") ||
+                        name.contains("requestShortCircuitShm") ||
+                        name.contains("replaceBlock") ||
+                        name.contains("copyBlock") ||
+                        name.contains("blockChecksum")) {
+                    p("adding to caller: " + sm);
+                    callers.add(sm);
+                }
+            }
+
+            for (SootMethod sm : callers) {
+                Body b = sm.getActiveBody();
+                CompileUtils.insertAt(b.getUnits(),
+                        CompileUtils.generateCallerBaggage(), CompileUtils.firstStmt(b), true);
+                sm.setActiveBody(b);
+            }
+        }
+
+    }
+
     // Load all possible instrumentation
     // Local/snapshot
     // For each selected RNode/WNode for inDepth and boundary, match all

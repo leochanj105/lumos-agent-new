@@ -201,6 +201,13 @@ public class CompileUtils {
         return insts;
     }
 
+    public static List<Stmt> generateCallerBaggage(){
+        List<Stmt> insts = new ArrayList<>();
+        SootMethod addm = getMethod("com.lumos.tracer.LumosTracer", "void addCallerBaggage()");
+        insts.add(call(invoke(addm)));
+        return insts;
+    }
+
     public static List<Stmt> generateRRsave(Body body, String field){
         List<Stmt> insts = new ArrayList<>();
         Local bLocal = getLocal(body, "bLocalSave", IntType.v());
