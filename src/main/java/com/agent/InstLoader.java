@@ -248,6 +248,19 @@ public class InstLoader{
                 LumosAgent.activate(inst);
             }
         }
+        addManualInst();
+    }
+
+    public static void addManualInst(){
+        if (LumosAgent.component.equals("dn")) {
+            String methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.DataNode: void transferBlock(org.apache.hadoop.hdfs.protocol.ExtendedBlock,org.apache.hadoop.hdfs.protocol.DatanodeInfo[],org.apache.hadoop.fs.StorageType[])>/if/0";
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+
+            String stmt = LumosAgent.translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "replicaNotExist", "MANUAL");
+            LumosAgent.activate(inst);
+        }
     }
 
     public static void p(String s) {
