@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.agent.EntryPoint;
 import com.agent.LumosAgent;
 
 import javassist.compiler.ast.IntConst;
@@ -411,7 +412,7 @@ public class CompileUtils {
     }
 
     public static Stmt firstStmt(Body b){
-        if(LumosAgent.entryMethods.contains(b.getMethod())){
+        if(EntryPoint.entryMethods.contains(b.getMethod())){
             Stmt stmt = searchStmt(b, "nop", -1);
             if(stmt!=null){
                 return stmt;
