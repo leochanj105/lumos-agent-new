@@ -52,7 +52,7 @@ public class InstLoader{
             }
 
 
-            String cfFile = queryResPath+"/InDepthControlVar.csv";
+            String cfFile = queryResPath+"/IndepthControlVar.csv";
             List<String> cfinsts = CompileUtils.readFrom(cfFile);
             for (String s : cfinsts) {
                 String[] rawItems = s.split("\t");
@@ -258,6 +258,7 @@ public class InstLoader{
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
 
             String stmt = LumosAgent.translationMap.get(method).get(instId);
+            // p("$$ " + stmt);
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "replicaNotExist", "MANUAL");
             LumosAgent.activate(inst);
         }

@@ -950,10 +950,10 @@ public class LumosAgent {
                             }
                         }
 
-                        // if (smstr.contains("convert")) {
-                        //     p("## " + smstr);
-                        //     p(b + "");
-                        // }
+                        if (smstr.contains("transferBlock(")) {
+                            p("## " + smstr);
+                            p(b + "");
+                        }
                         try {
                             b.validate();
                         } catch (Exception e) {

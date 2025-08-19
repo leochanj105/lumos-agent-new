@@ -16,6 +16,7 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.IfStmt;
 import soot.jimple.ReturnStmt;
 import soot.jimple.SpecialInvokeExpr;
 import soot.jimple.Stmt;
@@ -118,7 +119,8 @@ public class NondInst extends LInst {
         // if (followings.size() > 0) {
         //     firstStmt = followings.get(0);
         // }
-        if(type.equals("CONTROL")){
+        if (type.equals("CONTROL") || type.equals("MANUAL") ||
+                (anchor instanceof IfStmt)) {
             // units.insertBeforeNoRedirect(followings, anchor);
             CompileUtils.insertBeforeRedirect(units, followings, anchor);
             // units.insertBefore(actualStmt, anchor);
