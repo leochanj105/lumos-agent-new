@@ -99,6 +99,7 @@ public class EntryPoint{
             }
             entryMethods.add(
                     Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DirectoryScanner: void reconcile()>"));
+            entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.BlockReceiver$PacketResponder: void run()>"));
         }
 
         // SootMethod protoM = Scene.v().getMethod(
@@ -117,7 +118,7 @@ public class EntryPoint{
                 protoM = nnProtoClass.getMethodByNameUnsafe(name);
                 if (protoM == null) {
                     nnProtoClass = Scene.v()
-                            .getSootClass("org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolTranslatorPB");
+                            .getSootClass("org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolServerSideTranslatorPB");
                     protoM = nnProtoClass.getMethodByNameUnsafe(name);
                 }
                 if (protoM == null) {
@@ -128,7 +129,7 @@ public class EntryPoint{
                     stmts = CompileUtils.generateEndRecording();
                     pb.getUnits().insertBefore(stmts, ret);
                 }
-                p("%%" + protoM);
+                p("%%protoM: " + protoM);
                 protoM.setActiveBody(pb);
             }
             else{
@@ -136,6 +137,8 @@ public class EntryPoint{
                     stmts = CompileUtils.generateEndRecording();
                     b.getUnits().insertBefore(stmts, ret);
                 }
+
+                p("%%Non-protoM: " + toggleM);
             }
             // } else {
             // }

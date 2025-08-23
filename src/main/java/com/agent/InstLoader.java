@@ -261,6 +261,16 @@ public class InstLoader{
             // p("$$ " + stmt);
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "replicaNotExist", "MANUAL");
             LumosAgent.activate(inst);
+
+            methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap: void addAll(org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap)>/invoke/0";
+            method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+
+            stmt = LumosAgent.translationMap.get(method).get(instId);
+            // p("$$ " + stmt);
+            inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "$stack3", "MANUAL");
+            LumosAgent.activate(inst);
+
         }
     }
 
