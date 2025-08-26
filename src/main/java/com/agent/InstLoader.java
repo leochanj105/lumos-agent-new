@@ -134,7 +134,7 @@ public class InstLoader{
                     // collections or normal fields
                     if(witnessMap.containsKey(methodAndInst)){
                         for (String w : witnessMap.get(methodAndInst)) {
-                            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, w, "WITNESS");
+                            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, w, "BOUNDARY_WITNESS");
                             LumosAgent.activate(inst);
                         }
                     }

@@ -462,7 +462,7 @@ public class CompileUtils {
                 logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",java.lang.String)", v);
             } else {
                 lmStr = "void logTraceAndId";
-                logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",long)", v);
+                logMethod = getLogPrimitiveMethod(LumosAgent.rrClass, lmStr, ",int)", v);
             }
         } else {
             if (LumosAgent.verbose.equals("debug")) {
@@ -484,7 +484,7 @@ public class CompileUtils {
     }
 
     public static List<Stmt> generateLog(Body body, Stmt stmt, Value v, long id) {
-        LongConstant tagVal = LongConstant.v(id);
+        IntConstant tagVal = IntConstant.v((int) id);
         Stmt invokeStmt = null;
         invokeStmt = call(invoke(getLogMethod(v), v, tagVal));
         List<Stmt> stlist = new ArrayList<>();
@@ -948,7 +948,7 @@ public class CompileUtils {
             BafASMBackend backend = new BafASMBackend(cl, Options.java_version_1_8);
             backend.generateClassFile(bstream);
         } catch (Exception e) {
-            // System.out.println(cl);
+            // System.out.println("!!!! " + cl);
             e.printStackTrace();
             // throw new RuntimeException();
         }

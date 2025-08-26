@@ -139,6 +139,8 @@ public class EntryPoint{
                 }
 
                 p("%%Non-protoM: " + toggleM);
+                // if(toggleM.toString().contains("computeDatanodeWork"))
+                //     p("@@@ "+b);
             }
             // } else {
             // }
@@ -149,20 +151,25 @@ public class EntryPoint{
         }
         else{
             SootMethod beginM1 = Scene.v()
-                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: org.apache.hadoop.hdfs.server.protocol.HeartbeatResponse sendHeartBeat()>");
+                    .getMethod(
+                "<org.apache.hadoop.hdfs.server.datanode.BPServiceActor$Scheduler: boolean isHeartbeatDue(long)>");
             Body b = beginM1.getActiveBody();
             CompileUtils.insertAt(b.getUnits(), CompileUtils.generateStartRecording("offerService"),
                     CompileUtils.firstStmt(b), false);
+            CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
+                    CompileUtils.firstStmt(b), false);
             beginM1.setActiveBody(b);
 
-            SootMethod endM1 = Scene.v()
-                    .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void processQueueMessages()>");
-            b = endM1.getActiveBody();
-            for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
-                        ret, true);
-            }
-            endM1.setActiveBody(b);
+            // SootMethod endM1 = Scene.v()
+            //         .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void processQueueMessages()>");
+            // b = endM1.getActiveBody();
+            // for (Stmt ret : CompileUtils.getReturnStmts(b)) {
+            //     CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
+            //             ret, true);
+            // }
+            // endM1.setActiveBody(b);
+
+
 
             SootMethod beginM2 = Scene.v()
                     .getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: org.apache.hadoop.hdfs.protocol.ExtendedBlock popNextSuspectBlock()>");
@@ -180,7 +187,7 @@ public class EntryPoint{
             }
             endM2.setActiveBody(b);
             entryMethods.add(beginM1);
-            entryMethods.add(endM1);
+            // entryMethods.add(endM1);
             entryMethods.add(beginM2);
             entryMethods.add(endM2);
             // SootMethod sm2 = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: void run()>");

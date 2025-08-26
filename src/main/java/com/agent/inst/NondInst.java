@@ -43,6 +43,12 @@ public class NondInst extends LInst {
 
     @Override
     public List<Stmt> instrument(Body b) {
+        // fucking weird bug, don't know how to fix....
+        // basically, in computeReplicationWorkForBlocks, there is a very strange issue
+        // where numReplicas is clearly defined but reported as not
+        if(value.equals("numReplicas")){
+            return null;
+        }
         // SootClass sysc = LumosAgent.findClassExact("java.lang.System");
         // SootMethod hashm = sysc.getMethod("int identityHashCode(java.lang.Object)");
         // SootMethod timem = sysc.getMethod("long nanoTime()");
