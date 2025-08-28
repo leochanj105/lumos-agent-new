@@ -100,10 +100,12 @@ public class EntryPoint{
             entryMethods.add(
                     Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DirectoryScanner: void reconcile()>"));
             entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.BlockReceiver$PacketResponder: void run()>"));
+            entryMethods.add(Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.DataNode$DataTransfer: void run()>"));
         }
 
         // SootMethod protoM = Scene.v().getMethod(
         //         "<org.apache.hadoop.hdfs.protocolPB.PBHelper: org.apache.hadoop.hdfs.protocol.proto.DatanodeProtocolProtos$DatanodeCommandProto convert(org.apache.hadoop.hdfs.server.protocol.DatanodeCommand)>");
+        Set<SootMethod> protoMethods = new HashSet<>();
         for (SootMethod toggleM : entryMethods) {
             p("adding to " + toggleM.getName());
             Body b = LumosAgent.getBody(toggleM);
@@ -127,15 +129,16 @@ public class EntryPoint{
                 Body pb = LumosAgent.getBody(protoM);
                 for (Stmt ret : CompileUtils.getReturnStmts(pb)) {
                     stmts = CompileUtils.generateEndRecording();
-                    pb.getUnits().insertBefore(stmts, ret);
+                    CompileUtils.insertBeforeRedirect(pb.getUnits(), stmts, ret);
                 }
                 p("%%protoM: " + protoM);
                 protoM.setActiveBody(pb);
+                protoMethods.add(protoM);
             }
             else{
                 for (Stmt ret : CompileUtils.getReturnStmts(b)) {
                     stmts = CompileUtils.generateEndRecording();
-                    b.getUnits().insertBefore(stmts, ret);
+                    CompileUtils.insertBeforeRedirect(b.getUnits(), stmts, ret);
                 }
 
                 p("%%Non-protoM: " + toggleM);
@@ -148,6 +151,7 @@ public class EntryPoint{
         }
         if(component.equals("nn")){
             // entryMethods.add(protoM);
+            entryMethods.addAll(protoMethods);
         }
         else{
             SootMethod beginM1 = Scene.v()
@@ -159,16 +163,6 @@ public class EntryPoint{
             CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
                     CompileUtils.firstStmt(b), false);
             beginM1.setActiveBody(b);
-
-            // SootMethod endM1 = Scene.v()
-            //         .getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void processQueueMessages()>");
-            // b = endM1.getActiveBody();
-            // for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-            //     CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
-            //             ret, true);
-            // }
-            // endM1.setActiveBody(b);
-
 
 
             SootMethod beginM2 = Scene.v()
@@ -182,8 +176,7 @@ public class EntryPoint{
                     .getMethod("<org.apache.hadoop.hdfs.server.datanode.VolumeScanner: long runLoop(org.apache.hadoop.hdfs.protocol.ExtendedBlock)>");
             b = endM2.getActiveBody();
             for (Stmt ret : CompileUtils.getReturnStmts(b)) {
-                CompileUtils.insertAt(b.getUnits(), CompileUtils.generateEndRecording(),
-                        ret, true);
+                CompileUtils.insertBeforeRedirect(b.getUnits(), CompileUtils.generateEndRecording(), ret);
             }
             endM2.setActiveBody(b);
             entryMethods.add(beginM1);

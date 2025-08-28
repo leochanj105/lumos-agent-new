@@ -706,7 +706,6 @@ public class LumosAgent {
     }
 
     public static void lplay() {
-
         EntryPoint.addEntryMethods();
         addCallerBaggage();
         // addBoundaries();
@@ -825,10 +824,10 @@ public class LumosAgent {
                             }
                         }
 
-                        // if (smstr.contains("computeReplicationWorkForBlocks")) {
-                        //     p("&& " + smstr);
-                        //     p(b + "");
-                        // }
+                        if (smstr.contains("DataTransfer: void run(")) {
+                            p("&& " + smstr);
+                            p(b + "");
+                        }
                         try {
                             b.validate();
                         } catch (Exception e) {
