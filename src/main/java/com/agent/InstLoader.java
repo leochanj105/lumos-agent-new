@@ -14,7 +14,21 @@ public class InstLoader{
 
     public static String queryResPath = System.getenv("QUERY_RES_PATH");
     public static String nondFactPath = System.getenv("NONDFACT_PATH");
-
+    public static String ConcurrencyInstFile = System.getenv("CONCURRENCY_NOND");
+    public static String ContentInstFile = System.getenv("CONTENT_NOND");
+    public static String InputInstFile =System.getenv("INPUT_NOND");
+    static{
+        if(LumosAgent.bench.equals("train")){
+            queryResPath = "/app";
+            nondFactPath = "/app";
+            ConcurrencyInstFile = "/app/ConcurrencyNondRecord.csv";
+            ContentInstFile = "/app/LNondContentReadInstruction.csv";
+            InputInstFile = "/app/LNondInputVar.csv";
+        }
+        else{
+            // String ConcurrencyInstFile = System.getenv("CONCURRENCY_NOND");
+        }
+    }
     public static String removeQuotes(String s){
         return s.substring(1, s.length()-1);
     }
@@ -23,9 +37,10 @@ public class InstLoader{
     // For each selected RNode/WNode for inDepth and boundary, match all
     // instrumentations
     public static void loadInstrumentation() {
-        String allStr = System.getProperty("AllInst");
+        String allStr = System.getenv("AllInst");
         boolean all = allStr != null && allStr.equals("true");
         Set<String> inDepthInsts = new HashSet<>();
+        System.out.println("all: " + all);
         if (!all) {
             String inDepthFile = queryResPath+"/indepth.csv";
             List<String> inDepthNodes = CompileUtils.readFrom(inDepthFile);
@@ -142,7 +157,6 @@ public class InstLoader{
             }
         }
 
-        String ConcurrencyInstFile = System.getenv("CONCURRENCY_NOND");
         List<String> ConcurrencyInsts = CompileUtils.readFrom(ConcurrencyInstFile);
         for (String s : ConcurrencyInsts) {
             // FIXME: lambda currently unresolved
@@ -179,7 +193,6 @@ public class InstLoader{
         }
 
 
-        String ContentInstFile = System.getenv("CONTENT_NOND");
             //System.getProperty("ContentInst");
         List<String> ContentInsts = CompileUtils.readFrom(ContentInstFile);
         for (String s : ContentInsts) {
@@ -218,7 +231,6 @@ public class InstLoader{
             LumosAgent.activate(inst);
         }
         if (all) {
-            String InputInstFile =System.getenv("INPUT_NOND");
             List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
             for (String s : InputInsts) {
                 // FIXME: lambda currently unresolved
@@ -248,7 +260,9 @@ public class InstLoader{
                 LumosAgent.activate(inst);
             }
         }
-        addManualInst();
+        if(LumosAgent.bench.equals("hdfs")){
+            addManualInst();
+        }
     }
 
     public static void addManualInst(){

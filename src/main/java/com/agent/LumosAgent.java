@@ -90,18 +90,24 @@ public class LumosAgent {
             jrePath = System.getenv("JAVA_HOME") + "/lib/openjdk/jre/lib/rt.jar";
             toolsJarPath = System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar";
         }
-        String comp = System.getProperty("component");
-        if (comp != null && comp.equals("dn")) {
-            component = "dn";
+        String comp = System.getenv("COMPONENT");
+        if (comp != null) {
+            component = comp;
         }
         if (comp == null || (!comp.equals("nn") && !comp.equals("dn"))) {
             bench = "train";
         }
-        String vb = System.getProperty("verbose");
+        String vb = System.getenv("VERBOSE");
         if (vb != null && vb.contains("debug")) {
             verbose = "debug";
         } else {
             verbose = "performance";
+        }
+        String s = System.getenv("MODE");
+        if (s != null && s.equals("on")) {
+            mode = "on";
+        } else {
+            mode = "off";
         }
     }
 
@@ -254,7 +260,6 @@ public class LumosAgent {
         // } catch (IOException e) {
         //     e.printStackTrace();
         // }
-        mode = System.getProperty("mode");
 
         String componentStr = System.getProperty("component");
         if(componentStr != null){
