@@ -49,11 +49,6 @@ import tracing.TimestampedInstrumentation;
  *
  */
 public class LumosAgent {
-    // public static ClassLoader loader;
-
-    // public Agent(ClassLoader loader){
-    // this.loader = loader;
-    // }
     public static boolean playGroundFlag = false;
     public static ClassLoader cloader = null;
     public static boolean analyzeReady = false;
@@ -74,6 +69,7 @@ public class LumosAgent {
     // public static String rrClass = "com.mycompany.app.App";
     // [FIXME] add components from env vars
     public static String component = "nn";
+    public static String bench = "hdfs";
     public static Set<SootMethod> boundaryMethods = new HashSet<>();
     public static Set<SootMethod> pausedMethods = new HashSet<>();
     public static Set<SootMethod> baggageMethods = new HashSet<>();
@@ -97,6 +93,9 @@ public class LumosAgent {
         String comp = System.getProperty("component");
         if (comp != null && comp.equals("dn")) {
             component = "dn";
+        }
+        if (comp == null || (!comp.equals("nn") && !comp.equals("dn"))) {
+            bench = "train";
         }
         String vb = System.getProperty("verbose");
         if (vb != null && vb.contains("debug")) {
@@ -221,8 +220,8 @@ public class LumosAgent {
     public static String getRRField(){
         return "<"+rrClass+": java.lang.ThreadLocal rrOn>";
     }
-    public static boolean checkORMClass(String clsname) {
-        return false;
+    // public static boolean checkORMClass(String clsname) {
+    //     return false;
         // return (clsname.endsWith("order.domain.Order") || clsname.endsWith("other.domain.Order") ||
         //         clsname.endsWith("sso.domain.LoginValue") ||
         //         clsname.endsWith("com.trainticket.domain.AddMoney")
@@ -230,35 +229,31 @@ public class LumosAgent {
         //         clsname.endsWith("com.trainticket.domain.Payment") || clsname.endsWith("inside_payment.domain.Payment")
         //         ||
         //         clsname.endsWith("sso.domain.Account") || clsname.endsWith("inside_payment.domain.DrawBack"));
-    }
+    // }
 
-    public static boolean checkSkipped(SootClass cls){
-        String csn = cls.toString();
-        return skippedClasses.contains(csn) ||
-            csn.contains("java.util.concurrent");
-            // ||
-            // csn.contains("com.google.common.cache") ||
-            // csn.contains("org.apache.hadoop.security");
-    }
+    // public static boolean checkSkipped(SootClass cls){
+    //     String csn = cls.toString();
+    //     return skippedClasses.contains(csn) ||
+    //         csn.contains("java.util.concurrent");
+    //         // ||
+    //         // csn.contains("com.google.common.cache") ||
+    //         // csn.contains("org.apache.hadoop.security");
+    // }
 
     public static void premain(String agentArgs, Instrumentation inst) {
-        JarFile tracerJarFile = null;
-        JarFile slf4jJarFile = null;
-        JarFile slf4j_log4j12JarFile = null;
+        // JarFile tracerJarFile = null;
+        // JarFile slf4jJarFile = null;
+        // JarFile slf4j_log4j12JarFile = null;
 
-        JarFile toolsJarFile = null;
-        try {
-            tracerJarFile = new JarFile(bootstrapJar);
-            toolsJarFile = new JarFile(toolsJarPath);
+        // JarFile toolsJarFile = null;
+        // try {
+            // tracerJarFile = new JarFile(bootstrapJar);
+            // toolsJarFile = new JarFile(toolsJarPath);
             // slf4jJarFile = new JarFile("/tmp/slf4j-api.jar");
             // slf4j_log4j12JarFile = new JarFile("/tmp/slf4j-log4j12.jar");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // inst.appendToBootstrapClassLoaderSearch(tracerJarFile);
-        // if(inst !=null)
-        //     return;
-        // inst.appendToBootstrapClassLoaderSearch(toolsJarFile);
+        // } catch (IOException e) {
+        //     e.printStackTrace();
+        // }
         mode = System.getProperty("mode");
 
         String componentStr = System.getProperty("component");
@@ -266,33 +261,54 @@ public class LumosAgent {
             component = componentStr;
         }
 
-        String ton = System.getProperty("TimeOn");
-        if (ton != null && ton.equals("false")) {
-            LumosAgent.TimeOn = false;
-        }
-        // inst.appendToBootstrapClassLoaderSearch(slf4jJarFile);
+        // String ton = System.getProperty("TimeOn");
+        // if (ton != null && ton.equals("false")) {
+        //     LumosAgent.TimeOn = false;
+        // }
+        if (bench.equals("hdfs")) {
+            inst.addTransformer(new ClassFileTransformer() {
+                @Override
+                public byte[] transform(
+                        ClassLoader loader,
+                        String className,
+                        Class<?> classBeingRedefined, // null if class was not previously loaded
+                        ProtectionDomain protectionDomain,
+                        byte[] classFileBuffer) {
 
-        // inst.appendToBootstrapClassLoaderSearch(slf4j_log4j12JarFile);
-        inst.addTransformer(new ClassFileTransformer() {
-            @Override
-            public byte[] transform(
-                    ClassLoader loader,
-                    String className,
-                    Class<?> classBeingRedefined, // null if class was not previously loaded
-                    ProtectionDomain protectionDomain,
-                    byte[] classFileBuffer) {
-
-                if (loader != null
-                        // && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
-                        && loader.getClass().getName().contains("Loader")) {
-                    if (LumosAgent.cloader == null) {
-                        System.out.println("Hooked " + loader);
-                        LumosAgent.cloader = loader;
+                    if (loader != null
+                            // && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                            && loader.getClass().getName().contains("Loader")) {
+                        if (LumosAgent.cloader == null) {
+                            System.out.println("Hooked " + loader);
+                            LumosAgent.cloader = loader;
+                        }
                     }
+                    return classFileBuffer;
                 }
-                return classFileBuffer;
-            }
-        });
+            });
+        } else {
+
+            inst.addTransformer(new ClassFileTransformer() {
+                @Override
+                public byte[] transform(
+                        ClassLoader loader,
+                        String className,
+                        Class<?> classBeingRedefined, // null if class was not previously loaded
+                        ProtectionDomain protectionDomain,
+                        byte[] classFileBuffer) {
+
+                    if (loader != null
+                            && loader.getClass().getName().contains("LaunchedURLClassLoader")) {
+                        // && loader.getClass().getName().contains("Loader")) {
+                        if (LumosAgent.cloader == null) {
+                            System.out.println("Hooked " + loader);
+                            LumosAgent.cloader = loader;
+                        }
+                    }
+                    return classFileBuffer;
+                }
+            });
+        }
         AgentThread t = new AgentThread(inst);
         Thread thread = new Thread(t);
         thread.start();
@@ -307,39 +323,39 @@ public class LumosAgent {
         thread.start();
     }
 
-    public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname) {
-        return addFieldToClass(sclass, fieldname, fieldname, false);
-    }
+    // public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname) {
+    //     return addFieldToClass(sclass, fieldname, fieldname, false);
+    // }
 
-    public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname, boolean isStatic) {
-        int mod = soot.Modifier.PUBLIC;
-        if(isStatic){
-            mod |= soot.Modifier.STATIC;
-        }
-        sclass.addField(Scene.v().makeSootField(fieldname, type, mod));
-        byte[] bytecode = CompileUtils.compileClass(sclass);
-        return bytecode;
-    }
+    // public static byte[] addFieldToClass(SootClass sclass, Type type, String fieldname, boolean isStatic) {
+    //     int mod = soot.Modifier.PUBLIC;
+    //     if(isStatic){
+    //         mod |= soot.Modifier.STATIC;
+    //     }
+    //     sclass.addField(Scene.v().makeSootField(fieldname, type, mod));
+    //     byte[] bytecode = CompileUtils.compileClass(sclass);
+    //     return bytecode;
+    // }
 
-    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname) {
-        return addFieldToClass(sclass, RefType.v(type), fieldname, false);
-    }
+    // public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname) {
+    //     return addFieldToClass(sclass, RefType.v(type), fieldname, false);
+    // }
 
-    public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname, boolean isStatic) {
-        return addFieldToClass(sclass, RefType.v(type), fieldname, isStatic);
-    }
+    // public static byte[] addFieldToClass(SootClass sclass, String type, String fieldname, boolean isStatic) {
+    //     return addFieldToClass(sclass, RefType.v(type), fieldname, isStatic);
+    // }
 
 
-    public static Map<String, byte[]> addField(String classname, String type, String fieldname) {
-        Map<String, byte[]> cmap = new HashMap<>();
-        SootClass sclass = findClass(classname);
-        cmap.put(sclass.toString(), addFieldToClass(sclass, type, fieldname));
-        return cmap;
-    }
+    // public static Map<String, byte[]> addField(String classname, String type, String fieldname) {
+    //     Map<String, byte[]> cmap = new HashMap<>();
+    //     SootClass sclass = findClass(classname);
+    //     cmap.put(sclass.toString(), addFieldToClass(sclass, type, fieldname));
+    //     return cmap;
+    // }
 
-    public static String repoToObjClass(String repoName) {
-        return "";
-    }
+    // public static String repoToObjClass(String repoName) {
+    //     return "";
+    // }
 
     // public static boolean addTP(LumosInstrumentation tp) {
     //     if (allTPs.contains(tp)) {
@@ -531,51 +547,49 @@ public class LumosAgent {
     //     Scene.v().setEntryPoints(entryList);
     // }
 
-    public static void setupClass(String service) {
-        p("setting up class...");
-        List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
-        for(String s:retrieveHistory){
-            // FIXME: lambda is currently unresolved
-            if(s.contains("$lambda_")){
-                continue;
-            }
-            if(s.contains("log4j")){
-                continue;
-            }
-            if(s.contains("edu.brown.cs")){
-                continue;
-            }
+    // public static void setupClass(String service) {
+    //     p("setting up class...");
+    //     List<String> retrieveHistory = CompileUtils.readFrom("/home/jingyuan/lumos/retrieveHistory");
+    //     for(String s:retrieveHistory){
+    //         // FIXME: lambda is currently unresolved
+    //         if(s.contains("$lambda_")){
+    //             continue;
+    //         }
+    //         if(s.contains("log4j")){
+    //             continue;
+    //         }
+    //         if(s.contains("edu.brown.cs")){
+    //             continue;
+    //         }
 
-            SootMethod sm = Scene.v().getMethod(s);
-            // for (SootMethod sm : cls.getMethods()) {
-                if (sm.isAbstract() || sm.isNative()) {
-                    continue;
-                }
-                // System.out.println("reading " + sm);
-                sm.retrieveActiveBody();
-                methodMap.put(sm.getSignature(), sm);
-                bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
-            // }
-            SootClass cls = sm.getDeclaringClass();
-            classMap.put(cls.toString(), cls);
-            // if(cls.getName().contains("$lambda_")){
-            //     String pkg = cls.getPackageName();
+    //         SootMethod sm = Scene.v().getMethod(s);
+    //         // for (SootMethod sm : cls.getMethods()) {
+    //             if (sm.isAbstract() || sm.isNative()) {
+    //                 continue;
+    //             }
+    //             // System.out.println("reading " + sm);
+    //             sm.retrieveActiveBody();
+    //             methodMap.put(sm.getSignature(), sm);
+    //             bodyMap.put(sm.toString(), ((Body) sm.getActiveBody().clone()));
+    //         // }
+    //         SootClass cls = sm.getDeclaringClass();
+    //         classMap.put(cls.toString(), cls);
+    //         // if(cls.getName().contains("$lambda_")){
+    //         //     String pkg = cls.getPackageName();
                 
-            // }
-        }
-        // });
-        p("----Analysis Done------");
-        analyzeReady = true;
-    }
+    //         // }
+    //     }
+    //     // });
+    //     p("----Analysis Done------");
+    //     analyzeReady = true;
+    // }
 
     public static void analyzePath() {
         for (SootClass cls : Scene.v().getApplicationClasses()) {
-            // p(""+cls);
             if (cls.toString().contains("conf.HttpAspect")) {
                 continue;
             }
             for (SootMethod sm : cls.getMethods()) {
-                // p(""+sm);
                 if (sm.isAbstract() || sm.isNative()) {
                     continue;
                 }
@@ -585,17 +599,15 @@ public class LumosAgent {
 
             }
             classMap.put(cls.toString(), cls);
-            // CompileUtils.outputJimple(cls, "AAA");
-
         }
-        // p("analyzeReady: " + analyzeReady);
+        p("analysis of paths done");
     }
 
-    public static void loadBody (SootMethod sm){
+    public static void loadBody(SootMethod sm) {
         sm.retrieveActiveBody();
     }
 
-    public static void loadBodies(SootClass sc){
+    public static void loadBodies(SootClass sc) {
         for (SootMethod sm : sc.getMethods()) {
             loadBody(sm);
         }
@@ -645,9 +657,6 @@ public class LumosAgent {
     }
     public static void addAsBoundary(SootClass sc){
         for(SootMethod sm : sc.getMethods()){
-            // if(sc.getShortName().equals("ClassLoader")){
-            //     p("## " + sm +", " + sm.getSource() +", " + sm.hasActiveBody());
-            // }
             boundaryMethods.add(sm);
         }
     }
@@ -706,10 +715,14 @@ public class LumosAgent {
     }
 
     public static void lplay() {
-        EntryPoint.addEntryMethods();
-        addCallerBaggage();
-        // addBoundaries();
-        InstLoader.loadInstrumentation();
+        if(component.equals("hdfs")){
+            EntryPoint.addEntryMethods();
+            addCallerBaggage();
+            InstLoader.loadInstrumentation();
+        }
+        else{
+            InstLoader.addTrainInsts();
+        }
         p("----Analysis Done------");
         analyzeReady = true;
         // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
@@ -792,9 +805,9 @@ public class LumosAgent {
             // if(sclass.getPackageName().contains("java.")){
             //     continue;
             // }
-            if (checkSkipped(sclass)) {
-                continue;
-            }
+            // if (checkSkipped(sclass)) {
+            //     continue;
+            // }
             // FIXME: this method is too large
             if(sm.getSignature().contains("org.apache.hadoop.util.PureJavaCrc32: void <clinit>()")){ continue;}
             // if(!sclass.getName().contains(")){ continue;}
@@ -824,10 +837,10 @@ public class LumosAgent {
                             }
                         }
 
-                        if (smstr.contains("DataTransfer: void run(")) {
-                            p("&& " + smstr);
-                            p(b + "");
-                        }
+                        // if (smstr.contains("DataTransfer: void run(")) {
+                        //     p("&& " + smstr);
+                        //     p(b + "");
+                        // }
                         try {
                             b.validate();
                         } catch (Exception e) {
@@ -915,38 +928,39 @@ public class LumosAgent {
         }
     }
     public static void setupEnv(){
-        // FIXME: fix basePath & tracing framework path
-        String basePath = System.getenv("LUMOS_HADOOP_DIR");
-        String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
-        String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
-        String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
-        String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
-        // String httpfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
-        String btracePath = System.getenv("LUMOS_TRACING_FRAMEWORK_DIR") + "/tracingplane/client/target/classes/";
-        //String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
         List<String> cpaths = new ArrayList<String>();
         List<String> jpaths = new ArrayList<String>();
         List<String> apaths = new ArrayList<String>();
-        readJars(commonJarPath, jpaths);
-        readJars(hdfsJarPath, jpaths);
-        // readJars(httpfsJarPath, jpaths);
-        cpaths.add(commonPath);
-        cpaths.add(hdfsPath);
-        cpaths.add(btracePath);
-        // cpaths.add(testPath);
+        if (bench.equals("hdfs")) {
+            // FIXME: fix basePath & tracing framework path
+            String basePath = System.getenv("LUMOS_HADOOP_DIR");
+            String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
+            String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
+            String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
+            String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
+            // String httpfsJarPath = basePath +
+            // "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/httpfs/tomcat/lib/";
+            String btracePath = System.getenv("LUMOS_TRACING_FRAMEWORK_DIR") + "/tracingplane/client/target/classes/";
+            // String testPath = "/home/jingyuan/testpa/my-app/target/classes/";
+            readJars(commonJarPath, jpaths);
+            readJars(hdfsJarPath, jpaths);
+            // readJars(httpfsJarPath, jpaths);
+            cpaths.add(commonPath);
+            cpaths.add(hdfsPath);
+            cpaths.add(btracePath);
+            // cpaths.add(testPath);
+            apaths.add(LumosAgent.tracerJar);
+            cpaths.addAll(jpaths);
+        }
+        else{
+            p("adding train...");
+            cpaths.add("/app/classes/");
+            cpaths.add("/app/opentelemetry-javaagent.jar");
+            LumosAgent.jrePath = "/usr/local/openjdk-8/jre/lib/rt.jar";
+        }
         apaths.addAll(cpaths);
-        apaths.add(LumosAgent.tracerJar);
-        cpaths.addAll(jpaths);
         cpaths.add(LumosAgent.jrePath);
         LumosAgent.setupSoot(cpaths, apaths);
-/*
-        SootClass ecls = Scene.v().getSootClass("org.apache.hadoop.hdfs.server.datanode.DataNode");
-        p(ecls.getMethods());
-        SootMethod sm = ecls.getMethodByName("getStorage");
-        sm.retrieveActiveBody();
-        p(sm.getActiveBody());
-*/
-        //LumosAgent.setupClass("hdfs");
         analyzePath();
         readTranslation();
     }
@@ -977,6 +991,10 @@ public class LumosAgent {
 
     public static void main(String args[]) {
         System.out.println("main!!");
+        String benchmark = System.getenv("BENCHMARK");
+        if(benchmark == null || !benchmark.equals("hdfs")){
+            return;
+        }
         setupEnv();
 
         SootMethod sm2 = Scene.v().getMethod("<org.apache.hadoop.hdfs.server.datanode.BPServiceActor: void offerService()>");

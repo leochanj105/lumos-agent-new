@@ -1,33 +1,17 @@
 package com.agent;
 
-import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 // import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
 import edu.brown.cs.systems.dynamicinstrumentation.DynamicManager;
 import edu.brown.cs.systems.dynamicinstrumentation.DynamicModification;
 import edu.brown.cs.systems.dynamicinstrumentation.JVMAgent;
-import soot.Body;
-import soot.SootClass;
-import soot.SootMethod;
-import soot.Unit;
-import soot.Value;
-import soot.jimple.Stmt;
-import tracing.DBInstrumentationPoint;
-import tracing.LumosInstrumentation;
-import tracing.TimestampedInstrumentation;
-import tracing.TracePoint;
 
 public class AgentThread implements Runnable, MessageHandler {
     public Instrumentation inst;
@@ -64,122 +48,6 @@ public class AgentThread implements Runnable, MessageHandler {
         this.client.send(sname);
     }
 
-    // public void handleJSON(String jstr) {
-    //     boolean changed = false;
-    //     if (jstr.equals("SharedOn")) {
-    //         setORMInjectOn(true);
-    //         return;
-    //     } else if (jstr.equals("SharedOff")) {
-    //         setORMInjectOn(false);
-    //         return;
-    //     } else if (jstr.equals("TPOn")) {
-    //         setTPInstOn(true);
-    //         return;
-    //     } else if (jstr.equals("TPOff")) {
-    //         setTPInstOn(false);
-    //         return;
-    //     } else if (jstr.equals("RemoveTP")) {
-    //         System.out.println("RemoveTP");
-    //         LumosAgent.removeAllTPs();
-    //         refreshTPs();
-    //         return;
-    //     }
-    //     JSONObject obj = new JSONObject(jstr);
-    //     String x = obj.getString("type");
-    //     if (x.equals("add")) {
-    //         JSONArray arr = obj.getJSONArray("tps");
-    //         for (int i = 0; i < arr.length(); i++) {
-    //             JSONObject tp = arr.getJSONObject(i);
-    //             String id = tp.getString("id");
-    //             String tptype = tp.getString("tptype");
-    //             String method = tp.getString("method");
-    //             String stmt = tp.getString("stmt");
-    //             int line = tp.getInt("line");
-    //             LumosInstrumentation toadd = null;
-    //             if (tptype.equals("code")) {
-    //                 String value = tp.getString("value");
-    //                 List<String> suffix = new ArrayList<>();
-    //                 JSONArray suffixarray = tp.getJSONArray("suffix");
-    //                 for (int j = 0; j < suffixarray.length(); j++) {
-    //                     suffix.add(suffixarray.getString(j));
-    //                 }
-    //                 toadd = new TracePoint(id, method, stmt, line, value, suffix);
-    //             } else if (tptype.equals("soread")) {
-    //                 String sotype = tp.getString("sotype");
-    //                 String soclass = tp.getString("soclass");
-    //                 if (sotype.contains("Repository")) {
-    //                     toadd = new DBInstrumentationPoint(id, method, stmt, false, soclass);
-    //                 } else if (sotype.contains("ValueOperations") || sotype.contains("ClassShared")
-    //                         || sotype.contains("Atomic")) {
-    //                     toadd = new TimestampedInstrumentation(id, method, stmt);
-    //                 } else {
-    //                     LumosAgent.p("[WARN] SO type not supported for read: " + sotype);
-    //                 }
-    //             } else if (tptype.equals("sowrite")) {
-    //                 String sotype = tp.getString("sotype");
-    //                 if (sotype.contains("Repository")) {
-    //                     toadd = new DBInstrumentationPoint(id, method, stmt, true, "");
-    //                 } else if (sotype.contains("ValueOperations") || sotype.contains("ClassShared")
-    //                         || sotype.contains("Atomic")) {
-    //                     toadd = new TimestampedInstrumentation(id, method, stmt);
-    //                 } else {
-    //                     LumosAgent.p("[WARN] SO type not supported for write: " + sotype);
-    //                 }
-
-    //             } else {
-    //                 LumosAgent.p("[WARN] TP type not supported!!!!");
-    //             }
-    //             if (toadd != null) {
-    //                 boolean result = LumosAgent.addTP(toadd);
-    //                 if (result) {
-    //                     changed = true;
-    //                 }
-    //             }
-    //         }
-
-    //     } else if (x.equals("remove")) {
-    //         // System.out.println("removing temporarily not implemented");
-    //         JSONArray arr = obj.getJSONArray("tps");
-    //         for (int i = 0; i < arr.length(); i++) {
-    //             JSONObject tp = arr.getJSONObject(i);
-    //             String id = tp.getString("id");
-
-    //         }
-    //     } else if (x.equals("field")) {
-    //         String classname = obj.getString("classname");
-    //         String type = obj.getString("type");
-    //         String fieldname = obj.getString("fieldname");
-    //         addField(classname, type, fieldname);
-    //         // changed = true;
-
-    //     } else {
-    //         System.out.println("Not implemented!");
-    //     }
-    //     if (changed) {
-    //         refreshTPs();
-    //     }
-    // }
-
-    public void addField(String classname, String type, String fieldname) {
-        Map<String, byte[]> cmap = LumosAgent.addField(classname, type, fieldname);
-        System.out.println(cmap.keySet());
-        reload(cmap);
-    }
-
-    // public void refreshTPs() {
-    //     System.out.println("[LUMOS] Instrumenting...");
-    //     long start = System.currentTimeMillis();
-    //     Map<String, byte[]> cmap = LumosAgent.instrumentOld();
-    //     System.out.println(cmap.keySet());
-    //     // cmap.put(LumosAgent.testclass, LumosAgent.forTest);
-    //     // LumosAgent.p(LumosAgent.forTest.length + "");
-    //     if (cmap.keySet().size() > 0) {
-    //         reload(cmap);
-    //     }
-    //     long instrumentDuration = System.currentTimeMillis() - start;
-    //     System.out.println("Instrumentation time: " + instrumentDuration);
-
-    // }
     public void refreshInsts() {
         System.out.println("[LUMOS] Instrumenting...");
         long start = System.currentTimeMillis();
@@ -317,25 +185,27 @@ public class AgentThread implements Runnable, MessageHandler {
         // register appClassLoader loaded tracer with LumosGlobal
         ClassLoader appLoader = LumosAgent.cloader;
         Class<?> tracerClass;
-        try {
-            tracerClass = Class.forName("com.lumos.tracer.LumosRegister", true, appLoader);
-            System.out.println(tracerClass);
-            Method rm = tracerClass.getMethod("registerTracer");
-            rm.invoke(null);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
+        if (LumosAgent.bench.equals("hdfs")) {
+            try {
+                tracerClass = Class.forName("com.lumos.tracer.LumosRegister", true, appLoader);
+                System.out.println(tracerClass);
+                Method rm = tracerClass.getMethod("registerTracer");
+                rm.invoke(null);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
         }
-
+        // if(LumosAgent.cloader!=null) return;
         LumosAgent.setupEnv();
         LumosAgent.lplay();
         refreshInsts();

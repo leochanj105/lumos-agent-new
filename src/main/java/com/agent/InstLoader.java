@@ -274,6 +274,10 @@ public class InstLoader{
         }
     }
 
+    public static void addTrainInsts(){
+        p("adding for train...");
+    }
+
     public static void p(String s) {
         System.out.println(s);
     }
