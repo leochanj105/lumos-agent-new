@@ -2,6 +2,7 @@
 package com.agent.inst;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -38,6 +39,7 @@ public class NondInst extends LInst {
             this.id = sm + "::" + stmt + "::" + value + "::" + nondType;
         }else{
             lid = currId.addAndGet(1);
+            this.id = lid + "";
         }
     }
 
@@ -59,9 +61,6 @@ public class NondInst extends LInst {
         PatchingChain<Unit> units = b.getUnits();
         List<Stmt> followings = new ArrayList<>();
         Stmt actualStmt = getActualStmt(b);
-        // if(!(actualStmt instanceof AssignStmt)){
-        //     System.out.println(actualStmt);
-        // }
         if(actualStmt == null){
             // super hack!
             String hacked = stmt;
@@ -82,10 +81,6 @@ public class NondInst extends LInst {
             actualStmt = hackStmt;
         }
         Stmt anchor = actualStmt;
-        // if (LumosAgent.TimeOn) {
-        //     units.insertBefore(startStmt, actualStmt);
-        //     followings.add(endStmt);
-        // }
         if (CompileUtils.isParamIdentity(actualStmt)) {
             anchor = CompileUtils.firstStmt(b);
         } 
@@ -94,63 +89,77 @@ public class NondInst extends LInst {
     
         // for now, manually wire lengthof expression
         if (anchor instanceof AssignStmt && ((AssignStmt) anchor).getRightOp() instanceof LengthExpr) {
-                baseV = ((AssignStmt) anchor).getLeftOp();
+            baseV = ((AssignStmt) anchor).getLeftOp();
         } else {
-            baseV = CompileUtils.findLocal(b, value);
-            if (baseV == null && value.contains("#")) {
-                baseV = CompileUtils.findLocal(b, value.substring(0, value.indexOf("#")));
+            String local = value;
+            // System.out.println(type + ",," + local);
+            if (type.contains("TRAIN_STORE")) {
+                // add basev
+                local = value.substring(0, value.indexOf("->"));
+                // System.out.println(local);
             }
-            if (baseV == null) {
-                System.out.println("Can't find " + value + " in " + sm);
-            } else {
-                boolean needReplace = false;
-                if (!sm.isStatic() && baseV.equals(b.getThisLocal()) && sm.getName().equals("<init>")) {
-                    needReplace = true;
+            // hack
+            // if(!anchor.toString().contains(local)){
+            //     if (anchor instanceof AssignStmt) {
+            //         baseV = ((AssignStmt) anchor).getLeftOp();
+            //     } else {
+            //         System.out.println("Can't find " + local + " in " + sm);
+            //         return null;
+            //     }
+            // } else {
+                baseV = CompileUtils.findLocal(b, local);
+                if (baseV == null && local.contains("#")) {
+                    baseV = CompileUtils.findLocal(b, local.substring(0, local.indexOf("#")));
                 }
-                if (needReplace) {
-                    for (Unit u : units) {
-                        Stmt stmt = (Stmt) u;
-                        if (stmt.containsInvokeExpr() && stmt.getInvokeExpr() instanceof SpecialInvokeExpr) {
-                            SpecialInvokeExpr iexpr = (SpecialInvokeExpr) stmt.getInvokeExpr();
-                            if (iexpr.getBase().equals(baseV) && iexpr.getMethod().getName().equals("<init>")) {
-                                anchor = stmt;
-                            }
-                        }
+                if (baseV == null) {
+                    System.out.println("Can't find " + local + " in " + sm);
+                    return null;
+                }
+            // }
+
+        }
+        boolean needReplace = false;
+        if (!sm.isStatic() && baseV.equals(b.getThisLocal()) && sm.getName().equals("<init>")) {
+            needReplace = true;
+        }
+        if (needReplace) {
+            for (Unit u : units) {
+                Stmt stmt = (Stmt) u;
+                if (stmt.containsInvokeExpr() && stmt.getInvokeExpr() instanceof SpecialInvokeExpr) {
+                    SpecialInvokeExpr iexpr = (SpecialInvokeExpr) stmt.getInvokeExpr();
+                    if (iexpr.getBase().equals(baseV) && iexpr.getMethod().getName().equals("<init>")) {
+                        anchor = stmt;
                     }
-                }
-                if (LumosAgent.verbose.equals("debug")) {
-                    followings.addAll(CompileUtils.generateLog(b, anchor, baseV, id));
-                } else {
-                    followings.addAll(CompileUtils.generateLog(b, anchor, baseV, lid));
                 }
             }
         }
-        // }
-        // if (LumosAgent.TimeOn) {
-        // followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, startLocal,
-        // id + "::start"));
-        // followings.addAll(CompileUtils.generatePrimitiveLog(b, endStmt, endLocal, id
-        // + "::end"));
-        // }
-        // Stmt firstStmt = null;
-        // if (followings.size() > 0) {
-        // firstStmt = followings.get(0);
-        // }
+        if (LumosAgent.bench.equals("hdfs")) {
+            if (LumosAgent.verbose.equals("debug")) {
+                followings.addAll(CompileUtils.generateLog(b, anchor, baseV, id));
+            } else {
+                followings.addAll(CompileUtils.generateLog(b, anchor, baseV, lid));
+            }
+        } else {
+            List<String> refseq = new ArrayList<>();
+            // add fields
+            if(type.equals("TRAIN_STORE")){
+                String[] refs = value.trim().split("->");
+                for(int i = 1; i < refs.length; i++){
+                    refseq.add(refs[i]);
+                }
+            }
+            if(baseV.toString().contains("tpLocal")){
+                System.out.println("^^^ " + anchor+",  " + id);
+            }
+            followings.addAll(
+                    CompileUtils.generateTPStmtsOld(b, baseV, refseq, false, anchor, id));
+        }
+
         if (type.equals("CONTROL") || type.equals("MANUAL") ||
                 (anchor instanceof IfStmt) || (anchor instanceof SwitchStmt)) {
-            // units.insertBeforeNoRedirect(followings, anchor);
             CompileUtils.insertBeforeRedirect(units, followings, anchor);
-            // units.insertBefore(actualStmt, anchor);
-            // CompileUtils.insertAt(units, followings, anchor, true);
-            // if(value.contains("childrenList")){
-            // LumosAgent.p("@@ " + followings);
-            // LumosAgent.p(anchor);
-            // units.insertBefore(followings, anchor);
-            // LumosAgent.p(b);
-            // }
         } else if (anchor instanceof ReturnStmt) {
             CompileUtils.insertBeforeRedirect(units, followings, anchor);
-            // units.insertBefore(followings, anchor);
         } else {
             units.insertAfter(followings, anchor);
         }

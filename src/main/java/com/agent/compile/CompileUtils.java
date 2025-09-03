@@ -662,11 +662,11 @@ public class CompileUtils {
             } else {
                 tpLocal = getLocal(body, "tpLocal",
                         RefType.v("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span"));
-                SootMethod currMethod = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
+                SootMethod tm = getMethod("io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span",
                         "io.opentelemetry.javaagent.shaded.io.opentelemetry.api.trace.Span current()");
-                units.insertBefore(
-                        assign(tpLocal, Jimple.v().newStaticInvokeExpr(currMethod.makeRef())),
-                        ((JimpleBody) body).getFirstNonIdentityStmt());
+                Stmt s = assign(tpLocal, Jimple.v().newStaticInvokeExpr(tm.makeRef()));
+                units.insertBefore(s, ((JimpleBody) body).getFirstNonIdentityStmt());
+                firstStmts.put(body, s);
             }
         }
 
@@ -677,42 +677,52 @@ public class CompileUtils {
 
         Value val = null;
         Value baseval = v;
-        if (suffix.isEmpty()) {
+        if (suffix == null || suffix.isEmpty()) {
             if (baseval instanceof Constant) {
                 val = baseval;
             } else if (baseval instanceof JInstanceFieldRef) {
                 JInstanceFieldRef bref = (JInstanceFieldRef) baseval;
                 Local tmp = Jimple.v().newLocal("tpfield" + (id++), RefType.v(bref.getField().getType().toString()));
                 body.getLocals().add(tmp);
-                // locallist.add(tmp);
                 Stmt st = Jimple.v().newAssignStmt(tmp, bref);
                 stlist.add(st);
-                // App.p(st);
-                // curr = tmp;
                 val = tmp;
             } else {
-                // App.p(baseval instanceof Constant);
                 val = findLocal(body, baseval);
             }
         } else {
-            // App.p(baseval);
             Value curr = findLocal(body, baseval);
-            List<Local> locallist = new ArrayList<>();
-
+            // System.err.println("$ " + curr);
             for (String ref : suffix) {
+                // System.err.println("$$ " + ref);
+
                 SootClass sc = LumosAgent.classMap.get(curr.getType().toString());
+                if(sc == null){
+                    System.err.println("failed on " + curr + " at " + stori);
+                    return stlist;
+                }
+                // sc.getField(ref);
                 if (ref.isEmpty())
                     continue;
                 String actual = ref.trim();
                 SootField sf = null;
-                // System.out.println("!!! " + curr +", " + (curr == null ? "#" :
-                // curr.getType().toString()));
-                for (SootField f : sc.getFields()) {
-                    if (f.getName().contains(actual)) {
-                        sf = f;
-                        break;
-                    }
+                try {
+                    sf = sc.getFieldByName(actual);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+                if(sf == null){
+                    System.err.println("failed on " + curr + " at " + stori);
+                    return stlist;
+                }
+                // for (SootField f : sc.getFields()) {
+                //     System.err.println("$$$ " + f + ", " + actual +", " + f.toString().contains(actual));
+                //     if(f.getName().contains(actual)){
+                //         sf = f;
+                //         break;
+                //     }
+                // }
+                // System.err.println("$$ " + sf);
                 SootMethod getter = null;
                 if (sf.isPrivate() && !curr.toString().equals("this")) {
                     for (SootMethod method : sc.getMethods()) {
@@ -724,7 +734,6 @@ public class CompileUtils {
                             break;
                         }
                     }
-                    // App.p(getter);
                 }
 
                 Local actualBase = null;
@@ -755,15 +764,11 @@ public class CompileUtils {
                 curr = tmp;
             }
             val = curr;
-            // for(int i = 0; i < un.getSuffix())
         }
 
         AssignStmt stmt = Jimple.v().newAssignStmt(tmpString1,
                 StringConstant.v("[" + name + "] " + combine(v, suffix) + "="));
         stlist.add(stmt);
-        // Value actualVal = null;
-        // if(cv.g)
-        // cv.getValue();
 
         SootMethod toStringMethod = getValueOfMethod(val);
         stmt = Jimple.v().newAssignStmt(tmpString2, Jimple.v().newStaticInvokeExpr(toStringMethod.makeRef(), val));
@@ -851,8 +856,10 @@ public class CompileUtils {
             boolean stmtMatched = stmt.toString().equals(stmtStr);
             
             boolean lineMatch = linenum == -1 || (linenum == stmt.getJavaSourceStartLineNumber());
-            // boolean fuzzyMatch = (stmtStr.contains("#") || stmt.toString().contains("#")) &&
-            //         (FuzzySearch.ratio(stmt.toString(), stmtStr) > 99 && !(stmt.toString().contains("goto")));
+            // boolean fuzzyMatch = (stmtStr.contains("#") || stmt.toString().contains("#") ||
+            //         stmtStr.contains("invoke") || stmt.toString().contains("invoke")) &&
+            //         (FuzzySearch.ratio(stmt.toString(), stmtStr) > 90 && !(stmt.toString().contains("goto")))
+            //         && !(stmt.toString().contains("hasNext()"));
             boolean fuzzyMatch = false;
             if (lineMatch) {
                 if (stmtMatched || fuzzyMatch) {

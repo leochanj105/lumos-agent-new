@@ -91,6 +91,7 @@ public class LumosAgent {
             toolsJarPath = System.getenv("JAVA_HOME") + "/lib/openjdk/lib/tools.jar";
         }
         String comp = System.getenv("COMPONENT");
+        System.out.println("!! " + comp);
         if (comp != null) {
             component = comp;
         }
@@ -98,11 +99,11 @@ public class LumosAgent {
             bench = "train";
         }
         String vb = System.getenv("VERBOSE");
-        if (vb != null && vb.contains("debug")) {
+        // if (vb != null && vb.contains("debug")) {
             verbose = "debug";
-        } else {
-            verbose = "performance";
-        }
+        // } else {
+        //     verbose = "performance";
+        // }
         String s = System.getenv("MODE");
         if (s != null && s.equals("on")) {
             mode = "on";
@@ -261,9 +262,13 @@ public class LumosAgent {
         //     e.printStackTrace();
         // }
 
-        String componentStr = System.getProperty("component");
-        if(componentStr != null){
-            component = componentStr;
+        // String componentStr = System.getProperty("component");
+        // if(componentStr != null){
+        //     component = componentStr;
+        // }
+        p("Component: " + component);
+        if (!component.equals("ts-order-service")) {
+            return;
         }
 
         // String ton = System.getProperty("TimeOn");
@@ -723,11 +728,8 @@ public class LumosAgent {
         if(component.equals("hdfs")){
             EntryPoint.addEntryMethods();
             addCallerBaggage();
-            InstLoader.loadInstrumentation();
         }
-        else{
-            InstLoader.addTrainInsts();
-        }
+        InstLoader.loadInstrumentation();
         p("----Analysis Done------");
         analyzeReady = true;
         // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
@@ -842,10 +844,10 @@ public class LumosAgent {
                             }
                         }
 
-                        // if (smstr.contains("DataTransfer: void run(")) {
-                        //     p("&& " + smstr);
-                        //     p(b + "");
-                        // }
+                        if (smstr.contains("queryAlready")) {
+                            p("[INST " + smstr);
+                            p(b + "");
+                        }
                         try {
                             b.validate();
                         } catch (Exception e) {
@@ -958,8 +960,9 @@ public class LumosAgent {
             cpaths.addAll(jpaths);
         }
         else{
-            p("adding train...");
-            cpaths.add("/app/classes/");
+            p("adding train env...");
+            //cpaths.add("/app/classes/");
+            cpaths.add("/app/"+component+"-1.0-thin.jar");
             cpaths.add("/app/opentelemetry-javaagent.jar");
             LumosAgent.jrePath = "/usr/local/openjdk-8/jre/lib/rt.jar";
         }
@@ -981,7 +984,7 @@ public class LumosAgent {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("!! " + translationMap.size());
+        System.out.println("tmap size " + translationMap.size());
         invTranslationMap = new HashMap<>();
         
         for(String mname : translationMap.keySet()){

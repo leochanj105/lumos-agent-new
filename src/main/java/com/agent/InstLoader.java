@@ -17,6 +17,7 @@ public class InstLoader{
     public static String ConcurrencyInstFile = System.getenv("CONCURRENCY_NOND");
     public static String ContentInstFile = System.getenv("CONTENT_NOND");
     public static String InputInstFile =System.getenv("INPUT_NOND");
+    public static String allStr = System.getenv("ALL_INST");
     static{
         if(LumosAgent.bench.equals("train")){
             queryResPath = "/app";
@@ -32,15 +33,25 @@ public class InstLoader{
     public static String removeQuotes(String s){
         return s.substring(1, s.length()-1);
     }
+
+    public static boolean allowedMethod(String s){
+        // if(s.contains("fresh-null-assign")){
+        //     return false;
+        // }
+        if(LumosAgent.bench.equals("hdfs") && !s.contains("hadoop.")){
+            return false;
+        } 
+        return true;
+    }
     // Load all possible instrumentation
     // Local/snapshot
     // For each selected RNode/WNode for inDepth and boundary, match all
     // instrumentations
     public static void loadInstrumentation() {
-        String allStr = System.getenv("AllInst");
         boolean all = allStr != null && allStr.equals("true");
         Set<String> inDepthInsts = new HashSet<>();
         System.out.println("all: " + all);
+        System.out.println("MODE: " + LumosAgent.mode);
         if (!all) {
             String inDepthFile = queryResPath+"/indepth.csv";
             List<String> inDepthNodes = CompileUtils.readFrom(inDepthFile);
@@ -85,7 +96,7 @@ public class InstLoader{
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
 
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                     continue;
                 }
                 String stmt = LumosAgent.translationMap.get(method).get(instId);
@@ -124,7 +135,7 @@ public class InstLoader{
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
 
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                     continue;
                 }
                 String stmt = LumosAgent.translationMap.get(method).get(instId);
@@ -163,7 +174,7 @@ public class InstLoader{
             if(s.contains("$lambda_")){
                 continue;
             }
-
+            // p("## " + s);
             String[] rawItems = s.split("\t");
             String methodAndInst = rawItems[0];
 
@@ -177,7 +188,7 @@ public class InstLoader{
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+            if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                 continue;
             }
             if (!LumosAgent.findMethod(method).hasActiveBody()) {
@@ -189,6 +200,7 @@ public class InstLoader{
                 p("!!" + methodAndInst);
             }
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, nondType);
+            // p(inst);
             LumosAgent.activate(inst);
         }
 
@@ -213,7 +225,7 @@ public class InstLoader{
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
-            if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+            if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                 continue;
             }
 
@@ -249,7 +261,7 @@ public class InstLoader{
                 String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
                 String local = v.substring(v.indexOf("/") + 1);
 
-                if (instId.contains("fresh-null-assign") || !method.contains("hadoop")) {
+                if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                     continue;
                 }
                 if (!LumosAgent.findMethod(method).hasActiveBody()) {

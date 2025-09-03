@@ -94,7 +94,7 @@ public class AgentThread implements Runnable, MessageHandler {
                 System.out.println("?! " + s);
                 e.printStackTrace();
             } catch (Exception e) {
-                System.out.println("&& " + s);
+                System.out.println("?# " + s);
                 e.printStackTrace();
             }
             catch (Error e) {
