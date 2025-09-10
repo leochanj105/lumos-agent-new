@@ -99,11 +99,11 @@ public class LumosAgent {
             bench = "train";
         }
         String vb = System.getenv("VERBOSE");
-        // if (vb != null && vb.contains("debug")) {
+        if (vb != null && vb.contains("debug")) {
             verbose = "debug";
-        // } else {
-        //     verbose = "performance";
-        // }
+        } else {
+            verbose = "performance";
+        }
         String s = System.getenv("MODE");
         if (s != null && s.equals("on")) {
             mode = "on";
@@ -267,14 +267,11 @@ public class LumosAgent {
         //     component = componentStr;
         // }
         p("Component: " + component);
-        if (!component.equals("ts-order-service")) {
+        p("Bench: " + bench);
+        if (!component.equals("ts-order-service") && !bench.equals("hdfs")) {
             return;
         }
 
-        // String ton = System.getProperty("TimeOn");
-        // if (ton != null && ton.equals("false")) {
-        //     LumosAgent.TimeOn = false;
-        // }
         if (bench.equals("hdfs")) {
             inst.addTransformer(new ClassFileTransformer() {
                 @Override
@@ -725,12 +722,12 @@ public class LumosAgent {
     }
 
     public static void lplay() {
-        if(component.equals("hdfs")){
+        if(bench.equals("hdfs")){
             EntryPoint.addEntryMethods();
             addCallerBaggage();
         }
         InstLoader.loadInstrumentation();
-        p("----Analysis Done------");
+        // p("----Analysis Done------");
         analyzeReady = true;
         // [FIXME] We need: 1) value recording for local + snapshot; 2) timestamps
         // readInstsDoop();
@@ -844,10 +841,10 @@ public class LumosAgent {
                             }
                         }
 
-                        if (smstr.contains("queryAlready")) {
-                            p("[INST " + smstr);
-                            p(b + "");
-                        }
+                        // if (smstr.contains("queryAlready")) {
+                        //     p("[INST " + smstr);
+                        //     p(b + "");
+                        // }
                         try {
                             b.validate();
                         } catch (Exception e) {
@@ -866,8 +863,8 @@ public class LumosAgent {
             scToCompile.add(sclass);
         }
         taskSync();
-        p("Instrumentation done.");
-        p("Now compiling...");
+        // p("Instrumentation done.");
+        // p("Now compiling...");
         EntryPoint.entryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
         baggageMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
         boundaryMethods.forEach(m -> scToCompile.add(m.getDeclaringClass()));
@@ -900,7 +897,7 @@ public class LumosAgent {
         }
 
         taskSync();
-        p("Compilation done");
+        // p("Compilation done");
         return cmap;
     }
     public static void compile(String name, byte[] bytecode){
@@ -939,10 +936,14 @@ public class LumosAgent {
         List<String> jpaths = new ArrayList<String>();
         List<String> apaths = new ArrayList<String>();
         if (bench.equals("hdfs")) {
+            p("setting up hdfs...");
             // FIXME: fix basePath & tracing framework path
             String basePath = System.getenv("LUMOS_HADOOP_DIR");
-            String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
-            String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
+            // FIXME: change this to hadoop jars
+            // String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/classes/";
+            String commonPath = basePath + "/hadoop-common-project/hadoop-common/target/hadoop-common-2.7.2.jar";
+            // String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/classes/";
+            String hdfsPath = basePath + "/hadoop-hdfs-project/hadoop-hdfs/target/hadoop-hdfs-2.7.2.jar";
             String commonJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/common/lib/";
             String hdfsJarPath = basePath + "/hadoop-dist/target/hadoop-2.7.2/share/hadoop/hdfs/lib/";
             // String httpfsJarPath = basePath +

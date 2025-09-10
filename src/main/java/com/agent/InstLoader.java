@@ -178,9 +178,6 @@ public class InstLoader{
             String[] rawItems = s.split("\t");
             String methodAndInst = rawItems[0];
 
-            if(!all && !inDepthInsts.contains(methodAndInst)){
-                continue;
-            }
             String v = rawItems[1];
             String nondType = rawItems[2];
 
@@ -188,10 +185,15 @@ public class InstLoader{
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
-            if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
                 continue;
             }
-            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+            LumosAgent.baseInstClasses.add(LumosAgent.findMethod(method).getDeclaringClass());
+
+            if(!all && !inDepthInsts.contains(methodAndInst)){
+                continue;
+            }
+            if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                 continue;
             }
             String stmt = LumosAgent.translationMap.get(method).get(instId);
@@ -217,14 +219,15 @@ public class InstLoader{
             // String nondType = rawItems[0];
             String methodAndInst = rawItems[1];
 
-            if(!all && !inDepthInsts.contains(methodAndInst)){
-                continue;
-            }
             String v = rawItems[2];
             String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
             String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
             String local = v.substring(v.indexOf("/") + 1);
 
+            LumosAgent.baseInstClasses.add(LumosAgent.findMethod(method).getDeclaringClass());
+            if(!all && !inDepthInsts.contains(methodAndInst)){
+                continue;
+            }
             if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
                 continue;
             }
@@ -242,61 +245,83 @@ public class InstLoader{
             LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "CONTENT");
             LumosAgent.activate(inst);
         }
-        if (all) {
-            List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
-            for (String s : InputInsts) {
-                // FIXME: lambda currently unresolved
-                if (s.contains("$lambda_")) {
-                    continue;
-                }
-
-                String[] rawItems = s.split("\t");
-                String methodAndInst = rawItems[0];
-
-                if (!all && !inDepthInsts.contains(methodAndInst)) {
-                    continue;
-                }
-                String v = rawItems[1];
-                String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-                String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-                String local = v.substring(v.indexOf("/") + 1);
-
-                if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
-                    continue;
-                }
-                if (!LumosAgent.findMethod(method).hasActiveBody()) {
-                    continue;
-                }
-                String stmt = LumosAgent.translationMap.get(method).get(instId);
-                LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
-                LumosAgent.activate(inst);
+        // if (all) {
+        List<String> InputInsts = CompileUtils.readFrom(InputInstFile);
+        for (String s : InputInsts) {
+            // FIXME: lambda currently unresolved
+            if (s.contains("$lambda_")) {
+                continue;
             }
+
+            String[] rawItems = s.split("\t");
+            String methodAndInst = rawItems[0];
+
+            String v = rawItems[1];
+            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            String local = v.substring(v.indexOf("/") + 1);
+
+            if (!LumosAgent.findMethod(method).hasActiveBody()) {
+                continue;
+            }
+            LumosAgent.baseInstClasses.add(LumosAgent.findMethod(method).getDeclaringClass());
+            if (!all && !inDepthInsts.contains(methodAndInst)) {
+                continue;
+            }
+            if (instId.contains("fresh-null-assign") || !allowedMethod(method)) {
+                continue;
+            }
+            String stmt = LumosAgent.translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, local, "INPUT");
+            LumosAgent.activate(inst);
         }
+        // }
         if(LumosAgent.bench.equals("hdfs")){
             addManualInst();
         }
     }
 
     public static void addManualInst(){
+        String methodAndInst="", method="", instId="", stmt="";
         if (LumosAgent.component.equals("dn")) {
-            String methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.DataNode: void transferBlock(org.apache.hadoop.hdfs.protocol.ExtendedBlock,org.apache.hadoop.hdfs.protocol.DatanodeInfo[],org.apache.hadoop.fs.StorageType[])>/if/0";
-            String method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
-            String instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
-
-            String stmt = LumosAgent.translationMap.get(method).get(instId);
-            // p("$$ " + stmt);
-            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "replicaNotExist", "MANUAL");
-            LumosAgent.activate(inst);
-
-            methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap: void addAll(org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap)>/invoke/0";
+            methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.DataNode: void transferBlock(org.apache.hadoop.hdfs.protocol.ExtendedBlock,org.apache.hadoop.hdfs.protocol.DatanodeInfo[],org.apache.hadoop.fs.StorageType[])>/if/0";
             method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
             instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
 
             stmt = LumosAgent.translationMap.get(method).get(instId);
-            // p("$$ " + stmt);
-            inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "$stack3", "MANUAL");
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "replicaNotExist", "MANUAL");
             LumosAgent.activate(inst);
 
+
+            methodAndInst = "<org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor$BlockQueue: java.util.List poll(int)>/assign/7";
+            method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            stmt = LumosAgent.translationMap.get(method).get(instId);
+            inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "numTargets", "MANUAL");
+            LumosAgent.activate(inst);
+
+
+            methodAndInst = "<org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap: void addAll(org.apache.hadoop.hdfs.server.datanode.fsdataset.impl.ReplicaMap)>/invoke/0";
+            method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            stmt = LumosAgent.translationMap.get(method).get(instId);
+            inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "$stack3", "MANUAL");
+            LumosAgent.activate(inst);
+        }
+        else if(LumosAgent.component.equals("nn")){
+            methodAndInst = "<org.apache.hadoop.hdfs.server.protocol.BlockCommand: void <init>(int,java.lang.String,java.util.List)>/read-field-block/0";
+            method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            stmt = LumosAgent.translationMap.get(method).get(instId);
+            LInst inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "$stack20", "MANUAL");
+            LumosAgent.activate(inst);
+
+            methodAndInst = "<org.apache.hadoop.hdfs.server.blockmanagement.BlockManager$ReplicationWork: org.apache.hadoop.hdfs.protocol.Block access$4(org.apache.hadoop.hdfs.server.blockmanagement.BlockManager$ReplicationWork)>/read-field-block/0";
+            method = methodAndInst.substring(0, methodAndInst.indexOf("/"));
+            instId = methodAndInst.substring(methodAndInst.indexOf("/") + 1);
+            stmt = LumosAgent.translationMap.get(method).get(instId);
+            inst = new NondInst(LumosAgent.findMethod(method), stmt, -1, "$stack1", "MANUAL");
+            LumosAgent.activate(inst);
         }
     }
 

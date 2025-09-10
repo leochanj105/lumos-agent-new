@@ -73,7 +73,7 @@ public class AgentThread implements Runnable, MessageHandler {
     }
 
     public void reload(Map<String, byte[]> cmap) {
-        System.out.println("reloading");
+        // System.out.println("reloading");
         for(String s:cmap.keySet()){
             Map<String, byte[]> nmap = new HashMap<>();
             nmap.put(s,cmap.get(s));
@@ -85,7 +85,7 @@ public class AgentThread implements Runnable, MessageHandler {
                 actualLoader = lambdaLoader;
                 lambdaLoader.setByteCode(s, cmap.get(s));
             }
-            LumosAgent.p("reloading " + s);
+            // LumosAgent.p("reloading " + s);
             try {
                 // this.agent.reload(cmap);
                 this.agent.reload(nmap);
@@ -101,7 +101,7 @@ public class AgentThread implements Runnable, MessageHandler {
                 System.out.println("## " + s);
                 e.printStackTrace();
             }
-            LumosAgent.p(s + " reloaded");
+            // LumosAgent.p(s + " reloaded");
         }
         // System.out.println("reloaded");
     }

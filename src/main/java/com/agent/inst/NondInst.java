@@ -155,7 +155,7 @@ public class NondInst extends LInst {
                     CompileUtils.generateTPStmtsOld(b, baseV, refseq, false, anchor, id));
         }
 
-        if (type.equals("CONTROL") || type.equals("MANUAL") ||
+        if (type.equals("CONTROL") ||
                 (anchor instanceof IfStmt) || (anchor instanceof SwitchStmt)) {
             CompileUtils.insertBeforeRedirect(units, followings, anchor);
         } else if (anchor instanceof ReturnStmt) {
